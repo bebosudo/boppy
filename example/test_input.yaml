@@ -1,0 +1,13 @@
+Species:
+  - x
+  - y
+  - z
+
+Observables:
+  - x_tot = x + y
+
+Reactions:
+  - 3x + y = z
+
+# Simulation:
+#   - asdf
