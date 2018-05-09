@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import os.path
+import nose
 
-with open(os.path.join("tests", "__init__.py")) as t_fd:
-    exec(t_fd.read())
+nose.run()
