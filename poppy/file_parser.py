@@ -1,5 +1,5 @@
 import yaml
 
-with open("../example/test_input.yaml") as input_file_fd:
-    print(yaml.load("".join(input_file_fd.readlines())))
-    #
+
+def converter_yaml_string_to_dict(yaml_string):
+    return yaml.load(yaml_string)
