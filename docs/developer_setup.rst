@@ -103,11 +103,11 @@ Git reminder
 In need of a refresh on git? Here's a `cheatsheet <https://services.github.com/on-demand/downloads/github-git-cheat-sheet.pdf>`_ with some handy commands.
 A quick recap of a usual workflow is:
 
-  * ``git pull`` **inside** the poppy directory to update your local repository;
-  * ``git status`` to check what's the status of your local repo, when you are ready to submit your changes, then
-  * ``git add file1 file2 file3`` to add the files you want to be part of your commit (or add them separately), then
-  * ``git commit -m "Write here a short message explaining your changes"`` to "wrap" all those changes in a new snapshot (called a "commit" in the git *jargon*), and eventually
-  * ``git push`` to send your snapshot(s) to the remote repo.
+* ``git pull`` **inside** the poppy directory to update your local repository;
+* ``git status`` to check what's the status of your local repo, when you are ready to submit your changes, then
+* ``git add file1 file2 file3`` to add the files you want to be part of your commit (or add them separately), then
+* ``git commit -m "Write here a short message explaining your changes"`` to "wrap" all those changes in a new snapshot (called a "commit" in the git *jargon*), and eventually
+* ``git push`` to send your snapshot(s) to the remote repo.
 
 A more complete documentation on git can be found `here <https://git-scm.com/doc>`_.
 
@@ -121,7 +121,7 @@ Conflict
 2. open those files with your favorite text editor, and search for lines starting with ``<<<<<<<``;
 3. choose which version of the two to keep (yours, or the newest one);
 4. ``git add fileX`` to mark the file as "solved";
-1. repeat steps 2 to 4 for each file involved in the conflict, and finally
-1. ``git commit -m "Message exlaining what kind of conflict you just solved"``.
+5. repeat steps 2 to 4 for each file involved in the conflict, and finally
+6. ``git commit -m "Message exlaining what kind of conflict you just solved"``.
 
 A more complete example: https://help.github.com/articles/resolving-a-merge-conflict-using-the-command-line/.
