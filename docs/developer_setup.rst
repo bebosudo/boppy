@@ -29,7 +29,7 @@ This creates a new directory where a copy of the python3 executable is stored. T
 Virtualenv Usage
 ================
 
-Once the _virtualenv_ has been created, you need to run a configurator script every time you want to use that virtual environment.
+Once the *virtualenv* has been created, you need to run a configurator script every time you want to use that virtual environment.
 
 On Linux/Mac::
 
@@ -52,7 +52,7 @@ To test once more that the virtualenv is enabled, type ``which python`` (Linux/M
 Libraries installation
 ======================
 
-The code in this repo relies on some other code in order to work properly: these "other codes" are called _dependencies_.
+The code in this repo relies on some other code in order to work properly: these "other codes" are called *dependencies*.
 The dependencies we have so far are only other python libraries, so we can handle them using the virtualenv we just set up.
 
 All the dependencies needed are stored in a file called ``requirements.txt`` in the main directory of this repository, and we can install them with (activate the virtualenv first)::
@@ -90,11 +90,11 @@ Development strategies
 
 When developing a new feature in this project, try to follow the `Test Driven Development <https://en.wikipedia.org/wiki/Test-driven_development>`_ strategy:
 
-  1. Choose a specific feature you want to add, and how the user should use it (this is called a _requirement_);
-  2. Write _test cases_ that your feature should pass once developed; a test case asserts that a certain input produces a specific output. When writing tests, "the more, the merrier".
-  3. Run the test suite: it should fail (only) on the test cases you just wrote;
-  4. Program your new feature;
-  5. Repeat steps 3 to 4 until all the tests pass.
+1. Choose a specific feature you want to add, and how the user should use it (this is called a *requirement*);
+2. Write *test cases* that your feature should pass once developed; a test case asserts that a certain input produces a specific output. When writing tests, "the more, the merrier".
+3. Run the test suite: it should fail (only) on the test cases you just wrote;
+4. Program your new feature;
+5. Repeat steps 3 to 4 until all the tests pass.
 
 
 Git reminder
@@ -103,10 +103,10 @@ Git reminder
 In need of a refresh on git? Here's a `cheatsheet <https://services.github.com/on-demand/downloads/github-git-cheat-sheet.pdf>`_ with some handy commands.
 A quick recap of a usual workflow is:
 
-  * ``git pull`` *inside* the poppy directory to update your local repository;
+  * ``git pull`` **inside** the poppy directory to update your local repository;
   * ``git status`` to check what's the status of your local repo, when you are ready to submit your changes, then
   * ``git add file1 file2 file3`` to add the files you want to be part of your commit (or add them separately), then
-  * ``git commit -m "Write here a short message explaining your changes"`` to "wrap" all those changes in a new snapshot (called a "commit" in the git _jargon_), and eventually
+  * ``git commit -m "Write here a short message explaining your changes"`` to "wrap" all those changes in a new snapshot (called a "commit" in the git *jargon*), and eventually
   * ``git push`` to send your snapshot(s) to the remote repo.
 
 A more complete documentation on git can be found `here <https://git-scm.com/doc>`_.
@@ -115,13 +115,13 @@ A more complete documentation on git can be found `here <https://git-scm.com/doc
 Conflict
 --------
 
-_Merge conflict_ emergency?? `DON'T PANIC <https://www.youtube.com/watch?v=5ilGGP9BDZs>`_! Usually it all boils down to the same steps::
+*Merge conflict* emergency?? `DON'T PANIC <https://www.youtube.com/watch?v=5ilGGP9BDZs>`_! Usually it all boils down to the same steps::
 
-  1. ``git status`` to check what files are involved;
-  2. open those files with your favorite text editor, and search for lines starting with ``<<<<<<<``;
-  3. choose which version of the two to keep (yours, or the newest one);
-  4. ``git add fileX`` to mark the file as "solved";
-  1. repeat steps 2 to 4 for each file involved in the conflict, and finally
-  1. ``git commit -m "Message exlaining what kind of conflict you just solved"``.
+1. ``git status`` to check what files are involved;
+2. open those files with your favorite text editor, and search for lines starting with ``<<<<<<<``;
+3. choose which version of the two to keep (yours, or the newest one);
+4. ``git add fileX`` to mark the file as "solved";
+1. repeat steps 2 to 4 for each file involved in the conflict, and finally
+1. ``git commit -m "Message exlaining what kind of conflict you just solved"``.
 
 A more complete example: https://help.github.com/articles/resolving-a-merge-conflict-using-the-command-line/.
