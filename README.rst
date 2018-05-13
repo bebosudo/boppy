@@ -5,4 +5,14 @@ Tested on Python 3.6+.
 
 Project structured according to http://docs.python-guide.org/en/latest/writing/structure/.
 
-More details for developers available in the `relative guide <docs/developoper_setup.rst>`_.
+
+A detailed guide for developers is available in a `separate documentation <docs/developer_setup.rst>`_.
+
+
+Contributors
+==================
+
+*TODO*: Add a list of contributors:
+
+  * Contributor 1
+  * Contributor 2
