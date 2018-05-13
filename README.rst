@@ -14,5 +14,5 @@ Contributors
 
 *TODO*: Add a list of contributors:
 
-  * Contributor 1
-  * Contributor 2
+* Contributor 1
+* Contributor 2
