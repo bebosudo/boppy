@@ -13,5 +13,7 @@ Contributors
 ==================
 
 * Katerina Iscra
+* Alberto Chiusole
+* Teresa Pace
 
 
