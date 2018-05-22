@@ -12,7 +12,6 @@ A detailed guide for developers is available in a `separate documentation <docs/
 Contributors
 ==================
 
-*TODO*: Add a list of contributors:
+* Katerina Iscra
 
-* Contributor 1
-* Contributor 2
+
