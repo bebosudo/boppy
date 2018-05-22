@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+from . import context
 import unittest
+import poppy.file_parser
+
 import os.path
 from tempfile import TemporaryDirectory
-
-from .context import poppy
 
 
 class YAMLTester(unittest.TestCase):
@@ -54,7 +55,3 @@ class YAMLTester(unittest.TestCase):
     def tearDown(self):
         # Here we can place repetitive code that should be performed _after_ every test is executed.
         pass
-
-
-if __name__ == "__main__":
-    unittest.main()
