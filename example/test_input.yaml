@@ -6,6 +6,10 @@ Species:
 Observables:
   - x_tot = x + y
 
+Rates:
+
+Rates structure:
+
 Reactions:
   - 3x + y = z
 
