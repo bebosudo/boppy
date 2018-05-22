@@ -12,5 +12,8 @@ A detailed guide for developers is available in a `separate documentation <docs/
 Contributors
 ==================
 
+* Michele Marro
+* Katerina Iscra
 * Alberto Chiusole
-* somebody else 2
+* Teresa Pace
+* Erika Tomat
