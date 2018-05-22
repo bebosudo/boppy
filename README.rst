@@ -12,4 +12,6 @@ A detailed guide for developers is available in a `separate documentation <docs/
 Contributors
 ==================
 
+* Alberto Chiusole
 * Teresa Pace
+
