@@ -33,7 +33,7 @@ Once the *virtualenv* has been created, you need to run a configurator script ev
 
 On Linux/Mac::
 
-    $ /somewhere/poppyenv/bin/activate
+    $ source /somewhere/poppyenv/bin/activate
 
 On Windows::
 

@@ -12,6 +12,9 @@ A detailed guide for developers is available in a `separate documentation <docs/
 Contributors
 ==================
 
-*TODO*: Add a list of contributors:
+* Michele Marro
+* Katerina Iscra
+* Alberto Chiusole
+* Teresa Pace
+* Erika Tomat
 
-* Ciccio
