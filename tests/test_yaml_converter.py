@@ -1,14 +1,13 @@
-#!/usr/bin/env python3
-
 from . import context
 import unittest
 import poppy.file_parser
 
 import os.path
 from tempfile import TemporaryDirectory
+import numpy as np
 
 
-class YAMLTester(unittest.TestCase):
+class YAMLTest(unittest.TestCase):
     """Test that the YAML converter meets the YAML standard."""
 
     def setUp(self):
@@ -55,3 +54,19 @@ class YAMLTester(unittest.TestCase):
     def tearDown(self):
         # Here we can place repetitive code that should be performed _after_ every test is executed.
         pass
+
+
+class ParserTest(unittest.TestCase):
+    """Test that the parser is able to correctly convert reactions and rate functions."""
+
+    def setUp(self):
+        self.input_data = {"Species": ["x", "y", "z"],
+                           "Observables": ["x_tot = x + y"],
+                           "Reactions": ["3x + y = z"]}
+
+    def test_convert_reaction(self):
+        output = poppy.file_parser.reaction_converter(self.input_data["Reactions"][0],
+                                                      self.input_data["Species"])
+        expected_update_vector = np.array([-3, -1, 1])
+
+        self.assertEqual(np.array_equiv(output, expected_update_vector), True)
