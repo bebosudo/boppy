@@ -1,5 +1,6 @@
 from . import context
 import unittest
+import poppy.core
 import poppy.file_parser
 
 import os.path
@@ -62,11 +63,11 @@ class ParserTest(unittest.TestCase):
     def setUp(self):
         self.input_data = {"Species": ["x", "y", "z"],
                            "Observables": ["x_tot = x + y"],
-                           "Reactions": ["3x + y = z"]}
+                           "Reactions": ["3x + y -> z"]}
+        self.expected_update_vector = np.array([-3, -1, 1])
 
     def test_convert_reaction(self):
-        output = poppy.file_parser.reaction_converter(self.input_data["Reactions"][0],
-                                                      self.input_data["Species"])
-        expected_update_vector = np.array([-3, -1, 1])
+        output = poppy.core.Reaction(self.input_data["Reactions"][0],
+                                     self.input_data["Species"])
 
-        self.assertEqual(np.array_equiv(output, expected_update_vector), True)
+        self.assertEqual(np.array_equiv(output, self.expected_update_vector), True)
