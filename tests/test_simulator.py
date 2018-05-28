@@ -24,12 +24,12 @@ class SimulatorsTest(unittest.TestCase):
         self.t_max_2 = 111
         np.random.seed(42)
 
-    # def test_SSA_1(self):
-    #     output = poppy.simulators.SSA(self.update_matrix_1,
-    #                                   self.initial_conditions_1,
-    #                                   self.rate_functions_1,
-    #                                   self.t_max_1)
-    #     self.assertEqual(np.array_equiv(output, np.array([4, 5, 6])), True)
+    def test_SSA_1(self):
+        output = poppy.simulators.SSA(self.update_matrix_1,
+                                      self.initial_conditions_1,
+                                      self.rate_functions_1,
+                                      self.t_max_1)
+        self.assertEqual(np.array_equiv(output, np.array([4, 5, 6])), True)
 
     def test_next_reaction_method(self):
         trajectory_states, trajectory_times = poppy.simulators.next_reaction_method.next_reaction_method(self.update_matrix_1,
