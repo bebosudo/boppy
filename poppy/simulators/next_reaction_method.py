@@ -2,7 +2,7 @@ import numpy as np
 from collections import defaultdict
 
 
-def next_reaction_method(update_matrix, initial_mol_number, propensity_functions, affects, depends_on):
+def next_reaction_method(update_matrix, initial_mol_number, propensity_functions, t_max, affects, depends_on):
     """ 
     This function implements the Next Reaction Method from Gibson and Bruck.
 
