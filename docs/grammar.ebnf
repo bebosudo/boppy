@@ -1,0 +1,29 @@
+EBNF grammar to parse reaction and rate function expressions.
+
+digit := "0"|..|"9"
+letter_uscore := "a"|..|"z"|"A"|..|"Z"|"_"
+plus_or_minus := "+"|"-"
+mul_or_div := "*"|"/"
+point := "."
+
+unsigned_int := digit+
+signed_int := plus_or_minus unsigned_int
+
+opt_signed_int := plus_or_minus? unsigned_int
+float_num := plus_or_minus? (unsigned_int point unsigned_int? | point unsigned_int) (("e"|"E") opt_signed_int)?
+pi = plus_or_minus? "pi()"
+
+variable_name := letter_uscore (letter_uscore|digit)*
+
+real_num := opt_signed_int | pi | float_num
+
+// Reactions (e.g., 'x + 3Y + 4 z => 2 x + 2z')
+reaction_symbol := "=>"
+element := real_num? variable_name
+reaction := element ("+" element)* reaction_symbol element ("+" element)*
+
+// Rate functions
+function := plus_or_minus? variable_name "(" add_op ("," add_op)* ")"
+add_op := mul_op (plus_or_minus mul_op)*
+mul_op := expr (mul_or_div expr)*
+expr := plus_or_minus? "(" add_op ")" | real_num | function
