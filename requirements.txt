@@ -1,5 +1,6 @@
 coverage==4.5.1
 nose2==0.7.4
 numpy==1.14.3
+pyparsing==2.2.0
 PyYAML==3.12
 six==1.11.0

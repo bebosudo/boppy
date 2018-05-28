@@ -61,13 +61,27 @@ class ParserTest(unittest.TestCase):
     """Test that the parser is able to correctly convert reactions and rate functions."""
 
     def setUp(self):
-        self.input_data = {"Species": ["x", "y", "z"],
-                           "Observables": ["x_tot = x + y"],
-                           "Reactions": ["3x + y -> z"]}
-        self.expected_update_vector = np.array([-3, -1, 1])
+        self.input_data = {"Species": [poppy.core.Variable("x"),
+                                       poppy.core.Variable("y"),
+                                       poppy.core.Variable("z")],
+                           "Reactions": ["x + y => z",
+                                         "3x + y => z"]}
+        self.expected_update_vector = [np.array([-1, -1, 1]), np.array([-3, -1, 1])]
 
-    def test_convert_reaction(self):
-        output = poppy.core.Reaction(self.input_data["Reactions"][0],
-                                     self.input_data["Species"])
+    def test_convert_basic_reaction(self):
+        reaction_obj = poppy.core.Reaction(self.input_data["Reactions"][0],
+                                           self.input_data["Species"])
 
-        self.assertEqual(np.array_equiv(output, self.expected_update_vector), True)
+        self.assertEqual(np.array_equiv(reaction_obj.update_vector,
+                                        self.expected_update_vector[0]), True)
+
+    def test_convert_normal_reaction(self):
+        reaction_obj = poppy.core.Reaction(self.input_data["Reactions"][1],
+                                           self.input_data["Species"])
+
+        self.assertEqual(np.array_equiv(reaction_obj.update_vector,
+                                        self.expected_update_vector[1]), True)
+
+    def test_missing_value_raises_exc(self):
+        with self.assertRaisesRegex(ValueError, "Unable to find reagent '.*' inside the list of variables"):
+            poppy.core.Reaction("R1 + R2 => 2 P1", self.input_data["Species"])
