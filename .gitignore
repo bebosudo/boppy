@@ -105,3 +105,6 @@ venv.bak/
 
 # Sublime Text project files
 *.sublime-*
+
+# Personal stuff, not to be versioned
+personal/

@@ -27,3 +27,8 @@ function := plus_or_minus? variable_name "(" add_op ("," add_op)* ")"
 add_op := mul_op (plus_or_minus mul_op)*
 mul_op := expr (mul_or_div expr)*
 expr := plus_or_minus? "(" add_op ")" | real_num | function
+
+// Temporal logic basics
+phi = q | phi and phi | not phi | phi_1 omega(until)[t1, t2] phi_2 | F[t1, t2] phi | G[t1, t2] phi
+F[t1, t2] phi = eventually [t1, t2] phi             (at least once phi happens in [t1, t2])
+G[t1, t2] phi = eventually [t1, t2] phi                    (always phi happens in [t1, t2])

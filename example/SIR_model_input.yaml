@@ -3,10 +3,10 @@ Species:
   - x_i
   - x_r
 
-Rates:
-  - k_s: 0.01
-  - k_i: 1
-  - k_r: 0.05
+Parameters:
+  k_s: 0.01
+  k_i: 1
+  k_r: 0.05
 
 Reactions:
   - x_s + x_i => x_i + x_i
@@ -18,19 +18,18 @@ Rate functions:
   - k_r * x_i
   - k_s * x_r
 
-Input:
-  - x_s: 80
-  - x_i: 20
-  - x_r: 0
+Initial conditions:
+  x_s: 80
+  x_i: 20
+  x_r: 0
 
 System size:
-  - N: 100
+  N: 100
 
-Simulation:
-  - SSA
+Simulation: SSA
 
 Observables:
   - tot = x + y
 
 Properties:
-  - x_s: 43
+  x_s: 43
