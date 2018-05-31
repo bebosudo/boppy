@@ -9,10 +9,7 @@ DIGITS_PRECISION = 14
 ADD_OPS = {"+", "-"}
 MUL_OPS = {"*", "/"}
 
-# If you edit this char below, don't use an arithmetic symbol or a function name
-# like the ones in ADD_OPS, MUL_OPS or AVAIL_FUNCTIONS dictionaries!
-FUNC_ARGS_SEPARATOR = "."
-
+FUNC_ARGS_SEPARATOR = "|"
 
 AVAIL_FUNCTIONS = {"abs": (abs, 1),
                    "acos": (math.acos, 1),
@@ -233,20 +230,31 @@ def shunting_yard(list_of_tokens):
     for curr_token in list_of_tokens:
         if curr_token.is_number:
             out_queue.append(curr_token)
+
         elif curr_token.is_function:
+            # If a function accepts multiple arguments, such as `max()', insert a separator
+            # between the internal function arguments and the external elements.
+            _, number_args = AVAIL_FUNCTIONS[curr_token.internal_value]
+            if number_args < 0:
+                out_queue.append(Token(FUNC_ARGS_SEPARATOR))
+
             op_stack.append(curr_token)
+
         elif curr_token.is_operator:
             while (op_stack and
                    (op_stack[-1].is_function or op_stack[-1] >= curr_token) and
-                    not op_stack[-1].is_leftpar):
+                   not op_stack[-1].is_leftpar):
                 out_queue.append(op_stack.pop())
             op_stack.append(curr_token)
+
         elif curr_token.is_leftpar:
             op_stack.append(curr_token)
+
         elif curr_token.is_rightpar:
             while not op_stack[-1].is_leftpar:
                 out_queue.append(op_stack.pop())
             op_stack.pop()
+
     # There should not be any parentheses mismatch, since we perform an initial parsing, and
     # therefore we don't allow any ill-formed elements at a previous step.
     op_stack.reverse()
