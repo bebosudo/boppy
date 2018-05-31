@@ -1,33 +1,19 @@
 import pyparsing as pp
 import operator
 import math
+from collections import deque
+
 
 DIGITS_PRECISION = 14
 
-# moodle_funcs_web = ("https://docs.moodle.org/22/en/Calculated_question_"
-#                     "type#Available_functions")
-
-
-ADD_OPS = {"+": (operator.add, 2),
-           "-": (operator.sub, 2)
-           }
-
-MUL_OPS = {"*": (operator.mul, 2),
-           "/": (operator.truediv, 2)
-           }
+ADD_OPS = {"+", "-"}
+MUL_OPS = {"*", "/"}
 
 # If you edit this char below, don't use an arithmetic symbol or a function name
 # like the ones in ADD_OPS, MUL_OPS or AVAIL_FUNCTIONS dictionaries!
 FUNC_ARGS_SEPARATOR = "."
 
-# Just an extended dict containing the above two arithmetic dicts.
-ARITH_OPERATIONS = {}
-ARITH_OPERATIONS.update(ADD_OPS)
-ARITH_OPERATIONS.update(MUL_OPS)
 
-
-# The "pi()" function is managed internally at the lexer (see the `syntax' function),
-# because it's the only function without args.
 AVAIL_FUNCTIONS = {"abs": (abs, 1),
                    "acos": (math.acos, 1),
                    "acosh": (math.acosh, 1),
@@ -70,42 +56,43 @@ AVAIL_FUNCTIONS = {"abs": (abs, 1),
 
 
 class Token:
-    """This class manages arithmetic operators like + - * / and parenthesis.
+    """Assign each string a meaning, such as `identifier', `separator', `operator', etc.
 
-    It gives them a precedence (an order of relevance between operators) needed
-    later in the shunting yard algorithm to compute the result.
-    We use the pow function in substitution of the ^ power symbol, so we don't need to handle
-    right-associativity.
+    Gives each of them a precedence (an order of relevance among operators) needed in the
+    shunting yard algorithm to compute the result.
+
+    So far, we provide the pow function in substitution of the ^ power symbol, so we don't need to
+    handle right-associativity.
     """
 
-    def __init__(self, symbol_char):
-        self.symbol_char = symbol_char[0]
+    def __init__(self, elem):
+        self._token_element = elem
 
-        # The order (or "precedence") means simply the precedence an operator has among others.
-        if self.symbol_char in ADD_OPS:
+        if self._token_element in ADD_OPS:
             self.precedence = 1
-        elif self.symbol_char in MUL_OPS:
+        elif self._token_element in MUL_OPS:
             self.precedence = 2
         else:
             self.precedence = 0
 
-    def __hash__(self):
-        return hash(self.symbol_char)
+    @property
+    def internal_value(self):
+        return self._token_element
 
     def __eq__(self, other):
         if isinstance(self, other.__class__):
-            return self.symbol_char == other.symbol_char
+            return self.precedence == other.precedence
         return False
 
     def __lt__(self, other):
         if isinstance(self, other.__class__):
             return self.precedence < other.precedence
-        raise NotImplementedError()
+        return NotImplemented
 
     def __gt__(self, other):
         if isinstance(self, other.__class__):
             return self.precedence > other.precedence
-        raise NotImplementedError()
+        return NotImplemented
 
     def __ne__(self, other):
         return not self == other
@@ -117,91 +104,97 @@ class Token:
         return not self > other
 
     def __str__(self):
-        return self.symbol_char
+        return str(self._token_element)
 
     def __repr__(self):
         return repr(str(self))
 
 
-class BasicSyntax:
-    """This class collects basic syntax components.
+class CommonParserComponents:
+    """Collects basic syntax components that can be reused to build different parsers.
 
     The EBNF grammar is stored at "docs/grammar.ebnf".
 
     https://infohost.nmt.edu/tcc/help/pubs/pyparsing/web/struct-results-name.html
+
+    TODO: fix `variable', so that something like `-x' can be parsed.
     """
 
     def __init__(self):
-        self.digits = pp.Word(pp.nums).setName("digits")
-        self.plus_or_minus = pp.oneOf("+ -").setParseAction(self._tokenize_it).setName("+or-")
+        self.digits = pp.Word(pp.nums)
+        self.plus_or_minus = pp.oneOf("+ -")
         self.opt_plus_minus = pp.Optional(self.plus_or_minus)
-        self.mul_or_div = pp.oneOf("* /").setParseAction(self._tokenize_it).setName("*or/")
-        self.point = pp.Word(".").setName("point")
-        self.left_par = pp.Literal("(").setParseAction(self._tokenize_it).setName("left par")
-        self.right_par = pp.Literal(")").setParseAction(self._tokenize_it).setName("right par")
+        self.mul_or_div = pp.oneOf("* /")
+        self.point = pp.Word(".")
+        self.left_par = pp.Literal("(")
+        self.right_par = pp.Literal(")")
 
         self.unsigned_int = self.digits
-        self.signed_int = pp.Combine(self.plus_or_minus + self.unsigned_int).setName("signed int")
+        self.signed_int = pp.Combine(self.plus_or_minus + self.unsigned_int)
 
         self.opt_signed_int = (pp.Combine(self.opt_plus_minus + self.unsigned_int)
-                               .setParseAction(lambda el: int(el[0]))
-                               .setName("optionally signed int"))
-        self.float_num = pp.Combine(self.opt_plus_minus +
-                                    (self.unsigned_int + self.point + pp.Optional(self.unsigned_int)) ^ (self.point + self.unsigned_int) +
-                                    pp.Optional(pp.CaselessLiteral("e") + self.opt_signed_int)
-                                    ).setParseAction(lambda el: float(el[0])).setName("float number")
-        self.pi = pp.Combine(self.opt_plus_minus +
-                             pp.Literal("pi()").setParseAction(lambda el: math.pi)
-                             ).setParseAction(lambda el: float(el[0])).setName("greek pi")
+                               .setParseAction(lambda el: int(el[0])))
 
-        self.real_num = (self.float_num ^ self.opt_signed_int ^ self.pi).setName("real number")
+        self.float_num = pp.Combine(self.opt_plus_minus +
+                                    ((self.unsigned_int + self.point + pp.Optional(self.unsigned_int)) ^
+                                     (self.point + self.unsigned_int)
+                                     ) +
+                                    pp.Optional(pp.CaselessLiteral("e") + self.opt_signed_int)
+                                    ).setParseAction(lambda el: float(el[0]))
+
+        self.real_num = (self.float_num ^ self.opt_signed_int)
 
         self.variable_name = pp.Word(pp.alphas + "_", pp.alphas + pp.nums + "_")
-        self.variable = pp.Combine(self.opt_plus_minus + self.variable_name).setName("variable")
+        # self.variable = pp.Combine(self.opt_plus_minus +
+        #                            self.variable_name
+        #                            ).setResultsName("variable")
 
-    def _tokenize_it(self, _op):
-        return Token(_op)
 
-
-class RateFunctionSyntax(BasicSyntax):
+class FunctionParser(CommonParserComponents):
+    """A poppy valid Function has (almost) the same syntax of a python function."""
 
     def __init__(self):
-        super(RateFunctionSyntax, self).__init__()
+        super(FunctionParser, self).__init__()
+
         self.add_op = pp.Forward()
         self.mul_op = pp.Forward()
         self.expr = pp.Forward()
 
-        self.function = (self.variable + self.left_par + self.add_op +
-                         pp.ZeroOrMore("," + self.add_op) + self.right_par).setName("function")
+        self.function = (self.variable_name +
+                         self.left_par +
+                         self.add_op +
+                         pp.ZeroOrMore("," + self.add_op) +
+                         self.right_par
+                         )
 
-        self.add_op << (self.mul_op + pp.ZeroOrMore(self.plus_or_minus + self.mul_op)
-                        ).setName("add operator")
+        self.add_op << (self.mul_op + pp.ZeroOrMore(self.plus_or_minus + self.mul_op))
         self.mul_op << (self.expr + pp.ZeroOrMore(self.mul_or_div + self.expr)
-                        ).setName("mul operator")
+                        )
         self.expr << ((self.opt_plus_minus + self.left_par + self.add_op + self.right_par) ^
+                      self.real_num ^
                       self.function ^
-                      self.real_num
-                      ).setName("atomic expression")
+                      self.variable_name
+                      )
 
     def __getattr__(self, attr):
         # self.add_op.setDebug()
         return getattr(self.add_op(), attr)
 
 
-class ReactionSyntax(BasicSyntax):
+class ReactionParser(CommonParserComponents):
 
     def __init__(self):
-        super(ReactionSyntax, self).__init__()
+        super(ReactionParser, self).__init__()
 
-        reaction_symbol = pp.Literal("=>").suppress()
-        reagents_sum_sym = pp.Literal("+").suppress()
+        reaction_symbol = pp.Suppress("=>")
+        reagents_sum_sym = pp.Suppress("+")
 
         # A missing quantity must be interpreted as 1 unit.
         qtt_with_sym = pp.Group(pp.Optional(self.real_num, default=1).setResultsName("quantity") +
-                                self.variable.setResultsName("symbol"))
+                                self.variable_name.setResultsName("symbol"))
 
         self.reaction = (pp.Group(qtt_with_sym +
-                                  pp.OneOrMore(reagents_sum_sym + qtt_with_sym)
+                                  pp.ZeroOrMore(reagents_sum_sym + qtt_with_sym)
                                   ).setResultsName("reagents") +
                          reaction_symbol +
                          pp.Group(qtt_with_sym +
@@ -213,18 +206,58 @@ class ReactionSyntax(BasicSyntax):
         return getattr(self.reaction(), attr)
 
 
-_RATE_FUNCTION_GRAMMAR = RateFunctionSyntax()
-_REACTION_GRAMMAR = ReactionSyntax()
+_FUNCTION_GRAMMAR = FunctionParser()
+_REACTION_GRAMMAR = ReactionParser()
 
 
-def evaluate_reaction(str_reaction):
+def parse_reaction(str_reaction):
     return _REACTION_GRAMMAR.parseString(str_reaction)
 
 
-if __name__ == "__main__":
-    reac = "X + 2y => X + 4 z "
-    eval_reac = evaluate_reaction(reac)
+def parse_function(str_function):
+    return _FUNCTION_GRAMMAR.parseString(str_function)
 
-    # list_vars
-    # upd = produce_update_vector(eval_reac, )
-    print(repr(reac), "becomes", evaluate_reaction(reac))
+
+def shunting_yard(list_of_tokens):
+    """Given a list of numbers and Token(s), return a postfix notation ordered stack.
+
+    (e.g. "3 + 4 * 2 / ( 1 - 5 )" becomes: "3 4 2 * 1 5 - / +")
+
+    https://en.wikipedia.org/wiki/Shunting-yard_algorithm
+    http://www.reedbeta.com/blog/2011/12/11/the-shunting-yard-algorithm/
+    """
+
+    out_queue = deque()
+    op_stack = deque()
+
+    for curr_token in list_of_tokens:
+        if curr_token.is_number:
+            out_queue.append(curr_token)
+        elif curr_token.is_function:
+            op_stack.append(curr_token)
+        elif curr_token.is_operator:
+            while (op_stack and
+                   (op_stack[-1].is_function or op_stack[-1] >= curr_token) and
+                    not op_stack[-1].is_leftpar):
+                out_queue.append(op_stack.pop())
+            op_stack.append(curr_token)
+        elif curr_token.is_leftpar:
+            op_stack.append(curr_token)
+        elif curr_token.is_rightpar:
+            while not op_stack[-1].is_leftpar:
+                out_queue.append(op_stack.pop())
+            op_stack.pop()
+    # There should not be any parentheses mismatch, since we perform an initial parsing, and
+    # therefore we don't allow any ill-formed elements at a previous step.
+    op_stack.reverse()
+    out_queue.extend(op_stack)
+
+    return out_queue
+
+
+def rpn_calculator(rpn_tokens):
+    """Convert the RPN expression inside `rpn_tokens' into a sympy symbolic expression.
+
+    https: // en.wikipedia.org/wiki/Reverse_Polish_notation
+    """
+    pass
