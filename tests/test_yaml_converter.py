@@ -99,9 +99,9 @@ class ParserTest(unittest.TestCase):
         x_s, x_i, x_r = sym.symbols("x_s x_i x_r")
         self.expected_rate_functions = [sym.Integer(-2),
                                         sym.Integer(-3),
-                                        1 * x_i * x_s / 100,
+                                        x_i * x_s / 100,
                                         -6.0 * x_i * x_s / sym.Max(x_i, x_s) + 1.0 * x_i + x_r,
-                                        1 * x_i * x_s / 100]
+                                        x_i * x_s / 100]
 
     def test_convert_all_reactions(self):
         for i, _ in enumerate(self.input_data["Reactions"]):

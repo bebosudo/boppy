@@ -1,6 +1,7 @@
 import logging
 from .utils import parser, misc
 import numpy as np
+import sympy as sym
 
 LOGGER = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class Parameter:
     def __init__(self, str_symbol, param_value):
         LOGGER.debug("Creating a new Parameter object: %s", str_symbol)
         self._str_symbol = str_symbol
+        self._sym_symbol = sym.Symbol(str_symbol)
         self._param_value = param_value
 
     def __eq__(self, other):
@@ -48,11 +50,18 @@ class Parameter:
         return NotImplemented
 
     @property
-    def val(self):
+    def sym_symbol(self):
+        return self._sym_symbol
+
+    @property
+    def value(self):
         return self._param_value
 
+    def __hash__(self):
+        return hash(self._str_symbol)
+
     def __str__(self):
-        return self._str_symbol
+        return self.__class__.__name__ + "(" + repr(self._str_symbol) + ")"
 
     def __repr__(self):
         return repr(str(self))
@@ -66,24 +75,20 @@ class RateFunction:
         self._variables = variables_collection
         self._parameters = parameters_collection
 
-        self._parse_rate_function()
-        self._lambdify_rate_function()
-
-    def _parse_rate_function(self):
         self._pp_rate_function = parser.parse_function(self._orig_rate_function)
         LOGGER.debug("Parsed '%s' into: '%s'", self._orig_rate_function, self._pp_rate_function)
 
-    def _tokenize_objs(self):
-        return (misc.Token(elem) for elem in self._pp_rate_function)
-
-    def _lambdify_rate_function(self):
-        rpn_tokens = parser.shunting_yard(self._tokenize_objs())
+        tokenized_objs = (misc.Token(elem) for elem in self._pp_rate_function)
+        rpn_tokens = parser.shunting_yard(tokenized_objs)
         LOGGER.debug("Converted '%s' to RPN sequence: '%s'", self._orig_rate_function, rpn_tokens)
-        self.function = parser.rpn_calculator(rpn_tokens)
-        LOGGER.debug("Converted RPN sequence '%s' to symbolic function: '%s'",
-                     rpn_tokens, self.function)
 
-        print(self.function)
+        function_with_params = parser.rpn_calculator(rpn_tokens)
+        LOGGER.debug("Converted RPN sequence '%s' to symbolic function: '%s'",
+                     rpn_tokens, function_with_params)
+
+        param_symbol_to_val = {key: val.value for key, val in dict(self._parameters).items()}
+        self.function = function_with_params.subs(param_symbol_to_val)
+        LOGGER.debug("Substituted Parameters with their value in function '%s':", )
 
     def __call__(self, vector):
         raise NotImplementedError()
