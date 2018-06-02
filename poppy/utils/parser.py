@@ -1,110 +1,10 @@
 import pyparsing as pp
-import operator
-import math
 from collections import deque
+import sympy as sym
 
+from .misc import ARITH_OPS, AVAIL_FUNCTIONS, FUNC_ARGS_SEPARATOR
 
 DIGITS_PRECISION = 14
-
-ADD_OPS = {"+", "-"}
-MUL_OPS = {"*", "/"}
-
-FUNC_ARGS_SEPARATOR = "|"
-
-AVAIL_FUNCTIONS = {"abs": (abs, 1),
-                   "acos": (math.acos, 1),
-                   "acosh": (math.acosh, 1),
-                   "asin": (math.asin, 1),
-                   "asinh": (math.asinh, 1),
-                   "atan": (math.atan, 1),
-                   "atan2": (math.atan2, 2),
-                   "atanh": (math.atanh, 1),
-                   "ceil": (math.ceil, 1),
-                   "cos": (math.cos, 1),
-                   "cosh": (math.cosh, 1),
-                   "decbin": (bin, 1),
-                   "decoct": (oct, 1),
-                   "deg2rad": (math.radians, 1),
-                   "exp": (math.exp, 1),
-                   "expm1": (lambda x: math.exp(x) - 1, 1),
-                   "floor": (math.floor, 1),
-                   "fmod": (math.fmod, 2),
-                   "is_finite": (lambda x: not math.isinf, 1),
-                   "is_infinite": (math.isinf, 1),
-                   "is_nan": (math.isnan, 1),
-                   "log10": (math.log10, 1),
-                   "log": (math.log, 1),
-                   "log1p": (math.log1p, 1),
-                   "max": (max, -1),
-                   "min": (min, -1),
-                   "octdec": (lambda x: int(x, 8), 1),
-                   "pow": (math.pow, 2),
-                   "rad2deg": (math.degrees, 1),
-                   # TODO: check if the rand func in moodle works exactly like this
-                   # "rand": (lambda x: random.randint(-sys.maxint - 1,
-                   #                                   sys.maxint), 1),
-                   "round": (round, 1),
-                   "sin": (math.sin, 1),
-                   "sinh": (math.sinh, 1),
-                   "sqrt": (math.sqrt, 1),
-                   "tan": (math.tan, 1),
-                   "tanh": (math.tanh, 1)
-                   }
-
-
-class Token:
-    """Assign each string a meaning, such as `identifier', `separator', `operator', etc.
-
-    Gives each of them a precedence (an order of relevance among operators) needed in the
-    shunting yard algorithm to compute the result.
-
-    So far, we provide the pow function in substitution of the ^ power symbol, so we don't need to
-    handle right-associativity.
-    """
-
-    def __init__(self, elem):
-        self._token_element = elem
-
-        if self._token_element in ADD_OPS:
-            self.precedence = 1
-        elif self._token_element in MUL_OPS:
-            self.precedence = 2
-        else:
-            self.precedence = 0
-
-    @property
-    def internal_value(self):
-        return self._token_element
-
-    def __eq__(self, other):
-        if isinstance(self, other.__class__):
-            return self.precedence == other.precedence
-        return False
-
-    def __lt__(self, other):
-        if isinstance(self, other.__class__):
-            return self.precedence < other.precedence
-        return NotImplemented
-
-    def __gt__(self, other):
-        if isinstance(self, other.__class__):
-            return self.precedence > other.precedence
-        return NotImplemented
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __ge__(self, other):
-        return not self < other
-
-    def __le__(self, other):
-        return not self > other
-
-    def __str__(self):
-        return str(self._token_element)
-
-    def __repr__(self):
-        return repr(str(self))
 
 
 class CommonParserComponents:
@@ -223,20 +123,18 @@ def shunting_yard(list_of_tokens):
     https://en.wikipedia.org/wiki/Shunting-yard_algorithm
     http://www.reedbeta.com/blog/2011/12/11/the-shunting-yard-algorithm/
     """
-
     out_queue = deque()
     op_stack = deque()
 
     for curr_token in list_of_tokens:
-        if curr_token.is_number:
+        if curr_token.is_number or curr_token.is_variable:
             out_queue.append(curr_token)
 
         elif curr_token.is_function:
             # If a function accepts multiple arguments, such as `max()', insert a separator
             # between the internal function arguments and the external elements.
-            _, number_args = AVAIL_FUNCTIONS[curr_token.internal_value]
-            if number_args < 0:
-                out_queue.append(Token(FUNC_ARGS_SEPARATOR))
+            if AVAIL_FUNCTIONS[curr_token.value].number_args < 0:
+                out_queue.append(FUNC_ARGS_SEPARATOR)
 
             op_stack.append(curr_token)
 
@@ -255,6 +153,8 @@ def shunting_yard(list_of_tokens):
                 out_queue.append(op_stack.pop())
             op_stack.pop()
 
+        # Every other symbol (such as `,') is discarded.
+
     # There should not be any parentheses mismatch, since we perform an initial parsing, and
     # therefore we don't allow any ill-formed elements at a previous step.
     op_stack.reverse()
@@ -268,4 +168,39 @@ def rpn_calculator(rpn_tokens):
 
     https: // en.wikipedia.org/wiki/Reverse_Polish_notation
     """
-    pass
+    op_stack = deque()
+
+    _separator_to_drop = sym.Symbol(FUNC_ARGS_SEPARATOR.value)
+
+    for curr_token in rpn_tokens:
+
+        if curr_token.is_operator or curr_token.is_function:
+
+            if curr_token.is_function and AVAIL_FUNCTIONS[curr_token.value].number_args < 0:
+                _op = AVAIL_FUNCTIONS[curr_token.value].python_function
+                # `iter(func, sentinel)' drops the sentinel, so we need to use a different strategy
+                # when dealing with a fixed number of chars.
+                _args = iter(op_stack.pop, _separator_to_drop)
+
+            else:
+                if curr_token.value in ARITH_OPS:
+                    _op = ARITH_OPS[curr_token.value]
+                    num_args = 2
+                elif curr_token.value in AVAIL_FUNCTIONS:
+                    _op = AVAIL_FUNCTIONS[curr_token.value].python_function
+                    num_args = AVAIL_FUNCTIONS[curr_token.value].number_args
+                else:
+                    raise ValueError("Operator '{}' marked as function, but no functions are "
+                                     "associated to that name.".format(curr_token.value))
+
+                _args = (op_stack.pop() for _ in range(num_args))
+
+            op_stack.append(_op(*reversed(tuple(_args))))
+
+        elif curr_token.is_variable:
+            op_stack.append(sym.Symbol(curr_token.value))
+
+        elif curr_token.is_number:
+            op_stack.append(sym.Float(curr_token.value))
+
+    return op_stack.pop()

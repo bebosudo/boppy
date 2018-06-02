@@ -1,7 +1,6 @@
 import logging
-from .utils import parser
+from .utils import parser, misc
 import numpy as np
-import numbers
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +44,6 @@ class Parameter:
         if isinstance(self, other.__class__):
             return self.__dict__ == other.__dict__
         elif isinstance(other, str):
-            print(self, other)
             return self._str_symbol == other
         return NotImplemented
 
@@ -68,38 +66,24 @@ class RateFunction:
         self._variables = variables_collection
         self._parameters = parameters_collection
 
-        self._tokens_list = []
         self._parse_rate_function()
         self._lambdify_rate_function()
 
     def _parse_rate_function(self):
         self._pp_rate_function = parser.parse_function(self._orig_rate_function)
-        LOGGER.debug("Parsed string %s to Reaction object: %s",
-                     self._orig_rate_function, self._pp_rate_function)
+        LOGGER.debug("Parsed '%s' into: '%s'", self._orig_rate_function, self._pp_rate_function)
 
     def _tokenize_objs(self):
-        for elem in self._pp_rate_function:
-
-            # Substitute a Parameter with its constant value.
-            if self._parameters.get(elem):
-                elem = self._parameters[elem].val
-
-            token = parser.Token(elem)
-
-            token.is_number = isinstance(elem, numbers.Number)
-            token.is_function = elem in parser.AVAIL_FUNCTIONS
-            token.is_operator = elem in parser.ADD_OPS or elem in parser.MUL_OPS
-            token.is_leftpar = elem == "("
-            token.is_rightpar = elem == ")"
-            token.is_variable = self._variables.get(elem, False)
-
-            self._tokens_list.append(token)
+        return (misc.Token(elem) for elem in self._pp_rate_function)
 
     def _lambdify_rate_function(self):
-        # TODO: Move pyparsing things inside the parser module.
-        self._tokenize_objs()
-        rpn_tokens = parser.shunting_yard(self._tokens_list)
-        symbolic_function = parser.rpn_calculator(rpn_tokens)
+        rpn_tokens = parser.shunting_yard(self._tokenize_objs())
+        LOGGER.debug("Converted '%s' to RPN sequence: '%s'", self._orig_rate_function, rpn_tokens)
+        self.function = parser.rpn_calculator(rpn_tokens)
+        LOGGER.debug("Converted RPN sequence '%s' to symbolic function: '%s'",
+                     rpn_tokens, self.function)
+
+        print(self.function)
 
     def __call__(self, vector):
         raise NotImplementedError()

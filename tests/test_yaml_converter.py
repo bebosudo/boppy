@@ -6,6 +6,7 @@ import poppy.file_parser
 import os.path
 from tempfile import TemporaryDirectory
 import numpy as np
+import sympy as sym
 
 
 class YAMLTest(unittest.TestCase):
@@ -79,10 +80,12 @@ class ParserTest(unittest.TestCase):
         self.input_data = {"Species": poppy.core.VariableCollection(["x_s", "x_i", "x_r"]),
                            "Parameters": poppy.core.ParameterCollection({'k_i': 1,
                                                                          'k_r': 0.05,
-                                                                         'k_s': 0.01}),
-                           "Rate functions": ["3 + 4 * 2 / ( 1 - 5 )",
-                                              # "k_i * x_i * x_s / N",
-                                              "-3* 2 * k_i * x_i * x_s / sum(x_s + 2 * x_i - x_i + x_r)",
+                                                                         'k_s': 0.01,
+                                                                         'N': 100}),
+                           "Rate functions": ["4 - 6",
+                                              "max(2,3, 4) - max(5,6,7)",
+                                              "k_i * x_i * x_s / N",
+                                              "-3* 2 * k_i * x_i * x_s / max(x_s, x_i) + 2 * x_i - x_i + x_r",
                                               "k_i * x_i * x_s /    N  "],
                            "Reactions": ["x_s => x_i",
                                          "x_s + x_i => x_r",
@@ -93,26 +96,20 @@ class ParserTest(unittest.TestCase):
                                        np.array([-1, -1, 1]),
                                        np.array([-3, -1, 1])]
 
-    def test_convert_simplest_reaction(self):
-        reaction_obj = poppy.core.Reaction(self.input_data["Reactions"][0],
-                                           self.input_data["Species"])
+        x_s, x_i, x_r = sym.symbols("x_s x_i x_r")
+        self.expected_rate_functions = [sym.Integer(-2),
+                                        sym.Integer(-3),
+                                        1 * x_i * x_s / 100,
+                                        -6.0 * x_i * x_s / sym.Max(x_i, x_s) + 1.0 * x_i + x_r,
+                                        1 * x_i * x_s / 100]
 
-        self.assertEqual(np.array_equiv(reaction_obj.update_vector,
-                                        self.expected_update_vector[0]), True)
+    def test_convert_all_reactions(self):
+        for i, _ in enumerate(self.input_data["Reactions"]):
+            reaction_obj = poppy.core.Reaction(self.input_data["Reactions"][i],
+                                               self.input_data["Species"])
 
-    def test_convert_basic_reaction(self):
-        reaction_obj = poppy.core.Reaction(self.input_data["Reactions"][1],
-                                           self.input_data["Species"])
-
-        self.assertEqual(np.array_equiv(reaction_obj.update_vector,
-                                        self.expected_update_vector[1]), True)
-
-    def test_convert_normal_reaction(self):
-        reaction_obj = poppy.core.Reaction(self.input_data["Reactions"][2],
-                                           self.input_data["Species"])
-
-        self.assertEqual(np.array_equiv(reaction_obj.update_vector,
-                                        self.expected_update_vector[2]), True)
+            self.assertEqual(np.array_equiv(reaction_obj.update_vector,
+                                            self.expected_update_vector[i]), True)
 
     def test_missing_value_raises_exc(self):
         with self.assertRaisesRegex(ValueError, "Unable to find reagent '.*' inside the list of variables"):
@@ -125,14 +122,9 @@ class ParserTest(unittest.TestCase):
         for reac, upd_vec in zip(reaction_collection, self.expected_update_vector):
             self.assertEqual(np.array_equiv(reac.update_vector, upd_vec), True)
 
-    def test_basic_rate_function(self):
-        rate_func = poppy.core.RateFunction(self.input_data["Rate functions"][0],
-                                            self.input_data["Species"],
-                                            self.input_data["Parameters"])
-
-    def test_normal_rate_function(self):
-        rate_func = poppy.core.RateFunction(self.input_data["Rate functions"][1],
-                                            self.input_data["Species"],
-                                            self.input_data["Parameters"])
-
-        # rate_func(self.input_data["Initial conditions"])
+    def test_all_rate_functions(self):
+        for i, _ in enumerate(self.input_data["Rate functions"]):
+            rate_func = poppy.core.RateFunction(self.input_data["Rate functions"][i],
+                                                self.input_data["Species"],
+                                                self.input_data["Parameters"])
+            self.assertEqual(rate_func.function, self.expected_rate_functions[i])
