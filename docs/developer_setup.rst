@@ -88,6 +88,8 @@ Remember to always test that all the tests pass before submitting your changes t
 Development strategies
 ========================
 
+In this project, stick to the Python `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ Style Guide, with the exception of the maximum line length set at 100 chars, for both code and docstrings.
+
 When developing a new feature in this project, try to follow the `Test Driven Development <https://en.wikipedia.org/wiki/Test-driven_development>`_ strategy:
 
 1. Choose a specific feature you want to add, and how the user should use it (this is called a *requirement*);
@@ -95,6 +97,34 @@ When developing a new feature in this project, try to follow the `Test Driven De
 3. Run the test suite: it should fail (only) on the test cases you just wrote;
 4. Program your new feature;
 5. Repeat steps 3 to 4 until all the tests pass.
+
+
+Editor setup
+=================
+
+In case you want a suggestion on an editor to use to develop in Python, try `Sublime Text <https://www.sublimetext.com/>`_ editor; unfortunately it's not open-source, but it's free to use (even though it often asks to purchase a license).
+Once installed, press ``CTRL + SHIFT + P`` and search ``install Package Control``, which is a sort of central repository of plugins for Sublime Text
+
+Once installed, press again ``CTRL + SHIFT + P`` and search for the package ``Python 3``, which provides syntax highlighting for Python3 code.
+Another useful plugin is ``AutoPep8``: it provides an automatic formatter that adjust code to the Python PEP8 Style Guide; in order to trigger it at each file save, go to ``Preferences`` -> ``Package Settings`` -> ``AutoPep8`` -> ``Settings - User`` and paste the following::
+
+    {
+        "max-line-length": 99,
+
+        // number of spaces per indent level
+        "indent-size": 4,
+
+        "format_on_save": true,
+
+        // Format/Preview menu items only appear for views
+        // with syntax from `syntax_list`
+        // value is base filename of the .tmLanguage syntax files
+        "syntax_list": ["Python", "Python3"],
+    }
+
+An optional plugin could be ``reStructuredText Improved``, which gives syntax highlighting to ``.rst`` files, such as this one.
+
+Close and restart and your editor should be up and running.
 
 
 Git reminder
