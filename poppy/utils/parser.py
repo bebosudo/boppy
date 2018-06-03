@@ -131,7 +131,7 @@ def shunting_yard(list_of_tokens):
             out_queue.append(curr_token)
 
         elif curr_token.is_function:
-            # If a function accepts multiple arguments, such as `max()', insert a separator
+            # If a function, such as `max()', accepts multiple arguments, insert a separator
             # between the internal function arguments and the external elements.
             if AVAIL_FUNCTIONS[curr_token.value].number_args < 0:
                 out_queue.append(FUNC_ARGS_SEPARATOR)

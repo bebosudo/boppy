@@ -13,6 +13,7 @@ class Variable:
         LOGGER.debug("Creating a new Variable object: %s", str_symbol)
         self._var_index = var_index
         self._str_var = str_symbol
+        self._sym_symbol = sym.Symbol(str_symbol)
 
     def __eq__(self, other):
         if isinstance(self, other.__class__):
@@ -22,6 +23,10 @@ class Variable:
     @property
     def pos(self):
         return self._var_index
+
+    @property
+    def symbol(self):
+        return self._sym_symbol
 
     def __hash__(self):
         return hash(self._str_var)
@@ -64,7 +69,7 @@ class Parameter:
         return self.__class__.__name__ + "(" + repr(self._str_symbol) + ")"
 
     def __repr__(self):
-        return repr(str(self))
+        return str(self)
 
 
 class RateFunction:
@@ -86,13 +91,19 @@ class RateFunction:
         LOGGER.debug("Converted RPN sequence '%s' to symbolic function: '%s'",
                      rpn_tokens, function_with_params)
 
-        # Convert back each Parameter object to {sympy object: actual value}.
-        param_symbol_to_val = {val.symbol: val.value for _, val in dict(self._parameters).items()}
-        self.function = function_with_params.subs(param_symbol_to_val)
-        LOGGER.debug("Substituted Parameters with their value; function '%s':", self.function)
+        # Convert back each Parameter object to {sympy object: actual value} and substitute it.
+        param_symbol_to_val = {val.symbol: val.value for val in parameters_collection.values()}
+        self.sym_function = function_with_params.subs(param_symbol_to_val)
+        LOGGER.debug("Substituted Parameters with their value; function '%s':", self.sym_function)
+
+        self.lambdified = sym.lambdify(tuple(var.symbol for var in variables_collection.values()),
+                                       self.sym_function)
+
+    def function(self, arg):
+        return self.lambdified(*arg)
 
     def __call__(self, vector):
-        raise NotImplementedError()
+        return self.function(vector)
 
 
 class Reaction:
@@ -143,14 +154,14 @@ class Reaction:
 
 class CommonProxyMethods:
 
-    def __len__(self):
-        return len(self._obj)
-
     def __getattr__(self, attr):
         return getattr(self._obj, attr)
 
     def __getitem__(self, item):
         return self._obj[item]
+
+    def __len__(self):
+        return len(self._obj)
 
     def __str__(self):
         return str(self._obj)
@@ -160,25 +171,54 @@ class CommonProxyMethods:
 
 
 class VariableCollection(CommonProxyMethods):
-    """Expects as input a list of `string` variables."""
+    """Handles instances of Variable objects.
+
+    Input: list of `string` variables.
+    """
 
     def __init__(self, list_variables):
         self._obj = {var: Variable(var, idx) for idx, var in enumerate(list_variables)}
 
 
 class ParameterCollection(CommonProxyMethods):
-    """Expects as input a dict of `string`:`value` items."""
+    """Handles instances of Parameter objects.
+
+    Input: dict of `parameter (string)`: `value` items.
+    """
 
     def __init__(self, dict_parameters):
         self._obj = {str_param: Parameter(str_param, value)
                      for str_param, value in dict_parameters.items()}
 
 
+class RateFunctionCollection(CommonProxyMethods):
+    """Converts and handles RateFunction objects.
+
+    Provides a callable method to compute the
+
+    Input: list of functions (passed as `strings`).
+    """
+
+    def __init__(self, list_str_rate_functions, variables_collection, parameters_collection):
+        self._obj = [RateFunction(str_rate_function, variables_collection, parameters_collection)
+                     for str_rate_function in list_str_rate_functions]
+
+    def __call__(self, vector):
+        """Compute each function of the collection on the input numpy vector."""
+        if vector.ndim != 1 or vector.shape[0] != len(self._obj):
+            raise ValueError("Array shapes mismatch: input vector {}, rate "
+                             "functions {}.".format(vector.shape[0], len(self._obj)))
+
+        # CHEL: the elements in the output should always be positive.
+        # CHECK: should the sum of the output be equal/smaller than the system size?
+        return np.array(tuple(rate_func.function(vector) for rate_func in self))
+
+
 class ReactionCollection(CommonProxyMethods):
     """Given a list of reactions as strings and a list of Variable(s), parse and store them."""
 
-    def __init__(self, str_reactions, list_variables):
-        self._obj = [Reaction(reaction_to_be_parsed, list_variables)
+    def __init__(self, str_reactions, variables_collection):
+        self._obj = [Reaction(reaction_to_be_parsed, variables_collection)
                      for reaction_to_be_parsed in str_reactions]
 
 

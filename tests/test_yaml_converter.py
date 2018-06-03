@@ -83,14 +83,12 @@ class ParserTest(unittest.TestCase):
                                                                          'k_s': 0.01,
                                                                          'N': 100}),
                            "Rate functions": ["4 - 6",
-                                              "max(2,3, 4) - max(5,6,7)",
-                                              "k_i * x_i * x_s / N",
-                                              "-3* 2 * k_i * x_i * x_s / max(x_s, x_i) + 2 * x_i - x_i + x_r",
-                                              "k_i * x_i * x_s /    N  "],
+                                              "k_i * x_i * x_s /    N  ",
+                                              "-3* 2 * k_i * x_i * x_s / max(x_s, x_i) + 2 * x_i - x_i + x_r"],
                            "Reactions": ["x_s => x_i",
                                          "x_s + x_i => x_r",
                                          "3x_s + x_i => x_r"],
-                           "Initial conditions": [80, 20, 0],
+                           "Initial conditions": np.array([80, 20, 0]),
                            }
         self.expected_update_vector = [np.array([-1, 1, 0]),
                                        np.array([-1, -1, 1]),
@@ -98,10 +96,12 @@ class ParserTest(unittest.TestCase):
 
         x_s, x_i, x_r = sym.symbols("x_s x_i x_r")
         self.expected_rate_functions = [sym.Integer(-2),
-                                        sym.Integer(-3),
-                                        x_i * x_s / 100,
-                                        -6.0 * x_i * x_s / sym.Max(x_i, x_s) + 1.0 * x_i + x_r,
-                                        x_i * x_s / 100]
+                                        x_s * x_i / 100,
+                                        -6.0 * x_s * x_i / sym.Max(x_i, x_s) + 1.0 * x_i + x_r]
+
+        self.rate_func_coll = poppy.core.RateFunctionCollection(self.input_data["Rate functions"],
+                                                                self.input_data["Species"],
+                                                                self.input_data["Parameters"])
 
     def test_convert_all_reactions(self):
         for i, _ in enumerate(self.input_data["Reactions"]):
@@ -127,4 +127,16 @@ class ParserTest(unittest.TestCase):
             rate_func = poppy.core.RateFunction(self.input_data["Rate functions"][i],
                                                 self.input_data["Species"],
                                                 self.input_data["Parameters"])
-            self.assertEqual(rate_func.function, self.expected_rate_functions[i])
+            self.assertEqual(rate_func.sym_function, self.expected_rate_functions[i])
+
+    def test_rate_functions_collection_symbolic_arg(self):
+        for i, rate_func in enumerate(self.rate_func_coll):
+            self.assertEqual(rate_func.sym_function, self.expected_rate_functions[i])
+
+    def test_rate_functions_collection_compute_in_points(self):
+        self.assertEqual(True, np.allclose(self.rate_func_coll(self.input_data["Initial conditions"]),
+                                           [-2., 16., -100.]))
+
+    def test_rate_functions_collection_compute_dim_mismatch_exc(self):
+        with self.assertRaisesRegex(ValueError, "Array shapes mismatch: input vector \d, rate functions \d."):
+            self.rate_func_coll(np.array([1, 2]))
