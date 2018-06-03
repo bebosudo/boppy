@@ -1,6 +1,13 @@
 Poppy: a population processes simulator in Python!
 ======================================================
 
+.. image:: https://gitlab.com/bebosudo/poppy/badges/master/pipeline.svg
+  :target: https://github.com/lucabortolussi/poppy/
+
+.. image:: https://gitlab.com/bebosudo/poppy/badges/master/coverage.svg
+  :target: https://github.com/lucabortolussi/poppy/
+
+
 Tested on Python 3.6+.
 
 Project structured according to http://docs.python-guide.org/en/latest/writing/structure/.

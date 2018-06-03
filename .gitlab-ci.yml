@@ -4,10 +4,9 @@ test:
   script:
   - dnf update -y
   - dnf install -y python{,3}-pip
-  - python -V
-  - pip install -r requirements.txt
-  - python2 ./run_tests
-
+  # - python -V
+  # - pip install -r requirements.txt
+  # - python2 ./run_tests
   - python3 -V
   - pip3 install -r requirements.txt
   - python3 ./run_tests
