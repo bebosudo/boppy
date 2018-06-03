@@ -50,7 +50,7 @@ class Parameter:
         return NotImplemented
 
     @property
-    def sym_symbol(self):
+    def symbol(self):
         return self._sym_symbol
 
     @property
@@ -86,9 +86,10 @@ class RateFunction:
         LOGGER.debug("Converted RPN sequence '%s' to symbolic function: '%s'",
                      rpn_tokens, function_with_params)
 
-        param_symbol_to_val = {key: val.value for key, val in dict(self._parameters).items()}
+        # Convert back each Parameter object to {sympy object: actual value}.
+        param_symbol_to_val = {val.symbol: val.value for _, val in dict(self._parameters).items()}
         self.function = function_with_params.subs(param_symbol_to_val)
-        LOGGER.debug("Substituted Parameters with their value in function '%s':", )
+        LOGGER.debug("Substituted Parameters with their value; function '%s':", self.function)
 
     def __call__(self, vector):
         raise NotImplementedError()
