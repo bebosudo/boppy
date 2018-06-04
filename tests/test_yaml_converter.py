@@ -164,3 +164,39 @@ class PoppyCoreComponentsTest(unittest.TestCase):
                                     "be a string in '.*',?\."):
             self.raw_input["Simulation"] = "asdf"
             poppy.core.MainController(self.raw_input)
+
+    def test_application_controller_multiple_algorithms_requested(self):
+        with self.assertRaisesRegex(ValueError, "The algorithm chosen for the simulation must "
+                                    "be a single string\."):
+            self.raw_input["Simulation"] = None
+            poppy.core.MainController(self.raw_input)
+
+    def test_application_controller_multiple_dimension_sizes(self):
+        with self.assertRaisesRegex(ValueError, "The size of the system must be a single "
+                                    "parameter\. Found \d\."):
+            self.raw_input["System size"] = {"N": 123, "M": 456}
+            poppy.core.MainController(self.raw_input)
+
+    def test_application_controller_correct_handling(self):
+        controller = poppy.core.MainController(self.raw_input)
+        x_s, x_i, x_r, N, k_i, k_s, k_r = sym.symbols("x_s x_i x_r N k_i k_s k_r")
+
+        set_of_variables = {x_s, x_i, x_r}
+        for _, var in controller._variables.items():
+            self.assertIn(var.symbol, set_of_variables)
+
+        dict_of_parameters = {k_i: 1, k_r: 0.05, k_s: 0.01, N: 100}
+        for _, var in controller._parameters.items():
+            self.assertIn(var.symbol, dict_of_parameters)
+            self.assertEqual(var.value, dict_of_parameters[var.symbol])
+
+        expected_raw_rate_functions = [x_i * x_s / 100, 0.05 * x_i, 0.01 * x_r]
+        for idx, rfun in enumerate(controller._rate_functions):
+            self.assertEqual(expected_raw_rate_functions[idx], rfun.sym_function)
+
+        expected_raw_reactions_upd_vec = [np.array([-1.,  1.,  0.]),
+                                          np.array([0., -1.,  1.]),
+                                          np.array([1.,  0., -1.])]
+        for idx, reac in enumerate(controller._reactions):
+            self.assertEqual(True, np.allclose(expected_raw_reactions_upd_vec[idx],
+                                               reac.update_vector))

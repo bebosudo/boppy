@@ -104,6 +104,12 @@ class RateFunction:
     def function(self, arg):
         return self.lambdified(*arg)
 
+    def __str__(self):
+        return self.__class__.__name__ + "(" + repr(self.sym_function) + ")"
+
+    def __repr__(self):
+        return str(self)
+
     def __call__(self, vector):
         return self.function(vector)
 
@@ -151,7 +157,10 @@ class Reaction:
         return update_vec
 
     def __str__(self):
-        return self._orig_reaction
+        return self.__class__.__name__ + "(" + repr(self._orig_reaction) + ")"
+
+    def __repr__(self):
+        return str(self)
 
 
 class CommonProxyMethods:
@@ -166,7 +175,7 @@ class CommonProxyMethods:
         return len(self._obj)
 
     def __str__(self):
-        return str(self._obj)
+        return self.__class__.__name__ + "(" + str(self._obj) + ")"
 
     def __repr__(self):
         return repr(str(self))
@@ -234,19 +243,30 @@ class MainController:
             raise ValueError("The number of Parameters ({}) is different from the number of "
                              "Rate functions ({})".format(len(self._original_yaml["Parameters"]),
                                                           len(self._original_yaml["Rate functions"])))
+        elif len(self._original_yaml["System size"]) != 1:
+            raise ValueError("The size of the system must be a single parameter. "
+                             "Found {}.".format(len(self._original_yaml["System size"])))
 
-        self._alg_chosen = self._original_yaml["Simulation"].lower()
+        self._alg_chosen = self._original_yaml["Simulation"]
         if not isinstance(self._alg_chosen, str):
-            raise ValueError("The algorithm chosen for the simulation must be a string in ")
-        elif self._alg_chosen not in ALGORITHMS_AVAIL:
+            raise ValueError("The algorithm chosen for the simulation must be a single string.")
+        elif self._alg_chosen.lower() not in ALGORITHMS_AVAIL:
             raise ValueError("The algorithm chosen for the simulation must be a string in "
                              "{}.".format(", ".join((repr(alg) for alg in ALGORITHMS_AVAIL))))
 
+        self._alg_chosen = self._alg_chosen.lower()
+
         self._variables = VariableCollection(self._original_yaml["Species"])
-        self._parameters = ParameterCollection(self._original_yaml["Parameters"])
+        # Treat the system size as a parameter, so it's substituted, e.g. in RateFunction objects.
+        self._parameters = ParameterCollection(dict(self._original_yaml["Parameters"],
+                                                    **self._original_yaml["System size"]))
+
         self._rate_functions = RateFunctionCollection(self._original_yaml["Rate functions"],
                                                       self._variables, self._parameters)
         self._reactions = ReactionCollection(self._original_yaml["Reactions"], self._variables)
+
+        self._initial_conditions = np.array(self._original_yaml["Initial conditions"])
+        self._system_size = Parameter(*tuple(self._original_yaml["System size"].items())[0])
 
     @property
     def species(self):
