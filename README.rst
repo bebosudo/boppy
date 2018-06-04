@@ -7,11 +7,7 @@ Poppy: a population processes simulator in Python!
 .. image:: https://gitlab.com/bebosudo/poppy/badges/master/coverage.svg
   :target: https://github.com/lucabortolussi/poppy/
 
-
-.. raw:: html
-
-    <a href="https://github.com/lucabortolussi/poppy/"><img alt="pipeline status" src="https://gitlab.com/bebosudo/poppy/badges/master/pipeline.svg" /></a>
-    <a href="https://github.com/lucabortolussi/poppy/"><img alt="coverage report" src="https://gitlab.com/bebosudo/poppy/badges/master/coverage.svg" /></a>
+|
 
 
 Tested on Python 3.6+. MIT licensed (see file ``LICENSE`` in the main directory).
