@@ -3,14 +3,16 @@ from .utils import parser, misc
 import numpy as np
 import sympy as sym
 
-LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
+
+ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm", "next reaction method", "ode", "tau-leaping")
 
 
 class Variable:
     """A Variable (or species) contains a state of the population."""
 
     def __init__(self, str_symbol, var_index):
-        LOGGER.debug("Creating a new Variable object: %s", str_symbol)
+        _LOGGER.debug("Creating a new Variable object: %s", str_symbol)
         self._var_index = var_index
         self._str_var = str_symbol
         self._sym_symbol = sym.Symbol(str_symbol)
@@ -42,7 +44,7 @@ class Parameter:
     """A Parameter is a constant rate."""
 
     def __init__(self, str_symbol, param_value):
-        LOGGER.debug("Creating a new Parameter object: %s", str_symbol)
+        _LOGGER.debug("Creating a new Parameter object: %s", str_symbol)
         self._str_symbol = str_symbol
         self._sym_symbol = sym.Symbol(str_symbol)
         self._param_value = param_value
@@ -81,20 +83,20 @@ class RateFunction:
         self._parameters = parameters_collection
 
         self._pp_rate_function = parser.parse_function(self._orig_rate_function)
-        LOGGER.debug("Parsed '%s' into: '%s'", self._orig_rate_function, self._pp_rate_function)
+        _LOGGER.debug("Parsed '%s' into: '%s'", self._orig_rate_function, self._pp_rate_function)
 
         tokenized_objs = (misc.Token(elem) for elem in self._pp_rate_function)
         rpn_tokens = parser.shunting_yard(tokenized_objs)
-        LOGGER.debug("Converted '%s' to RPN sequence: '%s'", self._orig_rate_function, rpn_tokens)
+        _LOGGER.debug("Converted '%s' to RPN sequence: '%s'", self._orig_rate_function, rpn_tokens)
 
         function_with_params = parser.rpn_calculator(rpn_tokens)
-        LOGGER.debug("Converted RPN sequence '%s' to symbolic function: '%s'",
-                     rpn_tokens, function_with_params)
+        _LOGGER.debug("Converted RPN sequence '%s' to symbolic function: '%s'",
+                      rpn_tokens, function_with_params)
 
         # Convert back each Parameter object to {sympy object: actual value} and substitute it.
         param_symbol_to_val = {val.symbol: val.value for val in parameters_collection.values()}
         self.sym_function = function_with_params.subs(param_symbol_to_val)
-        LOGGER.debug("Substituted Parameters with their value; function '%s':", self.sym_function)
+        _LOGGER.debug("Substituted Parameters with their value; function '%s':", self.sym_function)
 
         self.lambdified = sym.lambdify(tuple(var.symbol for var in variables_collection.values()),
                                        self.sym_function)
@@ -110,7 +112,7 @@ class Reaction:
     """A Reaction is a combination of Variable(s) that produces other Variable(s) as output."""
 
     def __init__(self, str_reaction, variables_collection):
-        LOGGER.debug("Creating a new Reaction object: %s", str_reaction)
+        _LOGGER.debug("Creating a new Reaction object: %s", str_reaction)
         self._orig_reaction = str_reaction
         self._variables = variables_collection
         self._pp_reaction = None
@@ -119,9 +121,9 @@ class Reaction:
 
     def _parse_reaction(self):
         self._pp_reaction = parser.parse_reaction(self._orig_reaction)
-        LOGGER.debug("Parsed string %s to Reaction object: %s",
-                     self._orig_reaction,
-                     self._pp_reaction)
+        _LOGGER.debug("Parsed string %s to Reaction object: %s",
+                      self._orig_reaction,
+                      self._pp_reaction)
 
     def _extract_variable_from_input_list(self, symbol):
         try:
@@ -217,9 +219,37 @@ class RateFunctionCollection(CommonProxyMethods):
 class ReactionCollection(CommonProxyMethods):
     """Given a list of reactions as strings and a list of Variable(s), parse and store them."""
 
-    def __init__(self, str_reactions, variables_collection):
+    def __init__(self, list_str_reactions, variables_collection):
         self._obj = [Reaction(reaction_to_be_parsed, variables_collection)
-                     for reaction_to_be_parsed in str_reactions]
+                     for reaction_to_be_parsed in list_str_reactions]
 
+
+class MainController:
+    """Entry point class that handles the input interpretation and the execution."""
+
+    def __init__(self, dict_converted_yaml):
+        self._original_yaml = dict_converted_yaml
+
+        if len(self._original_yaml["Parameters"]) != len(self._original_yaml["Rate functions"]):
+            raise ValueError("The number of Parameters ({}) is different from the number of "
+                             "Rate functions ({})".format(len(self._original_yaml["Parameters"]),
+                                                          len(self._original_yaml["Rate functions"])))
+
+        self._alg_chosen = self._original_yaml["Simulation"].lower()
+        if not isinstance(self._alg_chosen, str):
+            raise ValueError("The algorithm chosen for the simulation must be a string in ")
+        elif self._alg_chosen not in ALGORITHMS_AVAIL:
+            raise ValueError("The algorithm chosen for the simulation must be a string in "
+                             "{}.".format(", ".join((repr(alg) for alg in ALGORITHMS_AVAIL))))
+
+        self._variables = VariableCollection(self._original_yaml["Species"])
+        self._parameters = ParameterCollection(self._original_yaml["Parameters"])
+        self._rate_functions = RateFunctionCollection(self._original_yaml["Rate functions"],
+                                                      self._variables, self._parameters)
+        self._reactions = ReactionCollection(self._original_yaml["Reactions"], self._variables)
+
+    @property
+    def species(self):
+        return self._variables
 
 # HyperParameters for the algorithm, kwargs to __init__

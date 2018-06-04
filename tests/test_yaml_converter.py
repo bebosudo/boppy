@@ -73,10 +73,22 @@ class YAMLTest(unittest.TestCase):
         pass
 
 
-class ParserTest(unittest.TestCase):
-    """Test that the parser is able to correctly convert reactions and rate functions."""
+class PoppyCoreComponentsTest(unittest.TestCase):
+    """Test that the parser is able to correctly convert variables, reactions, rate functions, etc."""
 
     def setUp(self):
+        self.raw_input = {'Initial conditions': {'x_i': 20, 'x_r': 0, 'x_s': 80},
+                          'Observables': ['tot = x + y'],
+                          'Parameters': {'k_i': 1, 'k_r': 0.05, 'k_s': 0.01},
+                          'Properties': {'x_s': 43},
+                          'Rate functions': ['k_i * x_i * x_s / N', 'k_r * x_i', 'k_s * x_r'],
+                          'Reactions': ['x_s + x_i => x_i + x_i', 'x_i => x_r', 'x_r => x_s'],
+                          'Simulation': 'SSA',
+                          'Species': ['x_s', 'x_i', 'x_r'],
+                          'System size': {'N': 100}
+                          }
+
+        # Data is different from the raw version above.
         self.input_data = {"Species": poppy.core.VariableCollection(["x_s", "x_i", "x_r"]),
                            "Parameters": poppy.core.ParameterCollection({'k_i': 1,
                                                                          'k_r': 0.05,
@@ -140,3 +152,15 @@ class ParserTest(unittest.TestCase):
     def test_rate_functions_collection_compute_dim_mismatch_exc(self):
         with self.assertRaisesRegex(ValueError, "Array shapes mismatch: input vector \d, rate functions \d."):
             self.rate_func_coll(np.array([1, 2]))
+
+    def test_application_controller_shape_rate_func_diff_parameters(self):
+        with self.assertRaisesRegex(ValueError, "The number of Parameters \(\d\) is different "
+                                    "from the number of Rate functions \(\d\)"):
+            self.raw_input["Rate functions"] = self.raw_input["Rate functions"][:-1]
+            poppy.core.MainController(self.raw_input)
+
+    def test_application_controller_unknown_algorithm(self):
+        with self.assertRaisesRegex(ValueError, "The algorithm chosen for the simulation must "
+                                    "be a string in '.*',?\."):
+            self.raw_input["Simulation"] = "asdf"
+            poppy.core.MainController(self.raw_input)
