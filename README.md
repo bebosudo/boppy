@@ -2,6 +2,8 @@
 
 [![pipeline status](https://gitlab.com/bebosudo/poppy/badges/master/pipeline.svg)](https://github.com/lucabortolussi/poppy/)
 
+[![pipeline status](https://gitlab.com/bebosudo/poppy/badges/master/pipeline.svg)](https://gitlab.com/bebosudo/poppy/commits/master)
+
 [![pipeline status](https://gitlab.com/gbraad/gauth/badges/master/pipeline.svg)](https://gitlab.com/gbraad/gauth/commits/master)
 
 Tested on Python 3.6+. MIT licensed (see file `LICENSE` in the main directory).
