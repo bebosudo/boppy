@@ -7,6 +7,8 @@ Poppy: a population processes simulator in Python!
 .. image:: https://gitlab.com/bebosudo/poppy/badges/master/coverage.svg
   :target: https://github.com/lucabortolussi/poppy/
 
+Tests performed on `Gitlab CI <https://gitlab.com/bebosudo/poppy/pipelines>`_.
+
 |
 
 
