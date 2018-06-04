@@ -2,6 +2,7 @@ import logging
 from .utils import parser, misc
 import numpy as np
 import sympy as sym
+from . import simulators
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -9,7 +10,7 @@ ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm", "next reaction method", "ode", "t
 
 
 class Variable:
-    """A Variable (or species) contains a state of the population."""
+    """A Variable (or species) represents a set of individuals in the population."""
 
     def __init__(self, str_symbol, var_index):
         _LOGGER.debug("Creating a new Variable object: %s", str_symbol)
@@ -232,9 +233,11 @@ class ReactionCollection(CommonProxyMethods):
         self._obj = [Reaction(reaction_to_be_parsed, variables_collection)
                      for reaction_to_be_parsed in list_str_reactions]
 
+        self.update_matrix = np.stack((reac.update_vector for reac in self))
+
 
 class MainController:
-    """Entry point class that handles the input interpretation and the execution."""
+    """Entry point class that handles the input interpretation and the simulation execution."""
 
     def __init__(self, dict_converted_yaml):
         self._original_yaml = dict_converted_yaml
@@ -254,7 +257,8 @@ class MainController:
             raise ValueError("The algorithm chosen for the simulation must be a string in "
                              "{}.".format(", ".join((repr(alg) for alg in ALGORITHMS_AVAIL))))
 
-        self._alg_chosen = self._alg_chosen.lower()
+        self._alg_chosen = self._alg_chosen
+        self._alg_function = self._associate_alg(self._alg_chosen)
 
         self._variables = VariableCollection(self._original_yaml["Species"])
         # Treat the system size as a parameter, so it's substituted, e.g. in RateFunction objects.
@@ -264,12 +268,26 @@ class MainController:
         self._rate_functions = RateFunctionCollection(self._original_yaml["Rate functions"],
                                                       self._variables, self._parameters)
         self._reactions = ReactionCollection(self._original_yaml["Reactions"], self._variables)
+        self.update_matrix = self._reactions.update_matrix
 
         self._initial_conditions = np.array(self._original_yaml["Initial conditions"])
         self._system_size = Parameter(*tuple(self._original_yaml["System size"].items())[0])
 
+    @staticmethod
+    def _associate_alg(str_alg):
+        """Given the algorithm name as string, returns the function to call that matches that name.
+
+        Does not check again whether the algorithm in the string passed is part of the available
+        algorithms, since it has already already been checked in the __init__.
+        """
+        if str_alg.lower() in ("ssa", "gillespie"):
+            return simulators.ssa
+        elif str_alg.lower() in ("nrm", "next reaction method"):
+            return simulators.next_reaction_method
+        else:
+            raise NotImplementedError("The chosen algorithm '{}' has not been "
+                                      "implemented yet.".format(str_alg))
+
     @property
     def species(self):
         return self._variables
-
-# HyperParameters for the algorithm, kwargs to __init__

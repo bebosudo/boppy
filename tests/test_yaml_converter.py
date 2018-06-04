@@ -1,6 +1,7 @@
 from . import context
 import unittest
 import poppy.core
+import poppy.simulators
 import poppy.file_parser
 
 import os.path
@@ -200,3 +201,5 @@ class PoppyCoreComponentsTest(unittest.TestCase):
         for idx, reac in enumerate(controller._reactions):
             self.assertEqual(True, np.allclose(expected_raw_reactions_upd_vec[idx],
                                                reac.update_vector))
+
+        self.assertEqual(controller._alg_function, poppy.simulators.ssa)
