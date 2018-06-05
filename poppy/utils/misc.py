@@ -3,6 +3,11 @@ import numbers
 import operator
 import sympy as sym
 
+
+class PoppyInputError(Exception):
+    pass
+
+
 _func_tuple = namedtuple("FunctionAndNumArgs", ("python_function", "number_args"))
 
 # Python operators are automatically converted to sympy operators.

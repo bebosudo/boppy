@@ -3,6 +3,9 @@ from .utils import parser, misc
 import numpy as np
 import sympy as sym
 from . import simulators
+import numbers
+
+InputError = misc.PoppyInputError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -136,7 +139,7 @@ class Reaction:
         try:
             return self._variables[symbol]
         except KeyError:
-            raise ValueError("Unable to find reagent '{}' inside the list of variables "
+            raise InputError("Unable to find reagent '{}' inside the list of variables "
                              "provided {}".format(symbol, self._variables))
 
     def _produce_update_vector(self):
@@ -218,7 +221,7 @@ class RateFunctionCollection(CommonProxyMethods):
     def __call__(self, vector):
         """Compute each function of the collection on the input numpy vector."""
         if vector.ndim != 1 or vector.shape[0] != len(self._obj):
-            raise ValueError("Array shapes mismatch: input vector {}, rate "
+            raise InputError("Array shapes mismatch: input vector {}, rate "
                              "functions {}.".format(vector.shape[0], len(self._obj)))
 
         # CHEL: the elements in the output should always be positive.
@@ -243,20 +246,24 @@ class MainController:
         self._original_yaml = dict_converted_yaml
 
         if len(self._original_yaml["Parameters"]) != len(self._original_yaml["Rate functions"]):
-            raise ValueError("The number of Parameters ({}) is different from the number of "
-                             "Rate functions ({})".format(len(self._original_yaml["Parameters"]),
-                                                          len(self._original_yaml["Rate functions"])))
+            raise InputError("The number of Parameters ({}) is different from the number of Rate"
+                             " functions ({})".format(len(self._original_yaml["Parameters"]),
+                                                      len(self._original_yaml["Rate functions"])))
         elif len(self._original_yaml["Initial conditions"]) != len(self._original_yaml["Species"]):
-            raise ValueError("There must be an initial condition for each species.")
+            raise InputError("There must be an initial condition for each species.")
         elif len(self._original_yaml["System size"]) != 1:
-            raise ValueError("The size of the system must be a single parameter. "
-                             "Found {}.".format(len(self._original_yaml["System size"])))
+            raise InputError("The size of the system must be a single parameter. "
+                             "Found: {}.".format(len(self._original_yaml["System size"])))
+        elif not isinstance(self._original_yaml["Maximum simulation time"], numbers.Number):
+            raise InputError("The maximum simulation time parameter (t_max) must be a number. "
+                             "Found: {}.".format(self._original_yaml["Maximum simulation time"]))
 
         self._alg_chosen = self._original_yaml["Simulation"]
         if not isinstance(self._alg_chosen, str):
-            raise ValueError("The algorithm chosen for the simulation must be a single string.")
+            raise InputError(
+                "The algorithm to use in the simulation must be a single string.")
         elif self._alg_chosen.lower() not in ALGORITHMS_AVAIL:
-            raise ValueError("The algorithm chosen for the simulation must be a string in "
+            raise InputError("The algorithm to use in the simulation must be a string in "
                              "{}.".format(", ".join((repr(alg) for alg in ALGORITHMS_AVAIL))))
 
         self._alg_chosen = self._alg_chosen
@@ -278,11 +285,12 @@ class MainController:
         self._initial_conditions = np.empty(len(self._original_yaml["Initial conditions"]))
         for species, initial_amount in self._original_yaml["Initial conditions"].items():
             if not self._variables.get(species, False):
-                raise ValueError("Initial condition '{}: {}' does not match any species "
+                raise InputError("Initial condition '{}: {}' does not match any species "
                                  "provided.".format(species, initial_amount))
             self._initial_conditions[self._variables[species].pos] = initial_amount
 
-        self.simulation_output = None
+        self.simulation_out_times = None
+        self.simulation_out_population = None
 
     @staticmethod
     def _associate_alg(str_alg):
@@ -304,8 +312,10 @@ class MainController:
         return self._variables
 
     def simulate(self):
-        self.simulation_output = self._alg_function(self.update_matrix,
-                                                    self._initial_conditions,
-                                                    self._rate_functions,
-                                                    self._t_max)
-        return self.simulation_output
+        population, times = self._alg_function(self.update_matrix,
+                                               self._initial_conditions,
+                                               self._rate_functions,
+                                               self._t_max)
+
+        self.simulation_out_population, self.simulation_out_times = population, times
+        return population, times

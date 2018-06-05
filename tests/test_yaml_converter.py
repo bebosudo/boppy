@@ -1,6 +1,7 @@
 from . import context
 import unittest
 import poppy.core
+from poppy.utils.misc import PoppyInputError
 import poppy.simulators
 import poppy.file_parser
 
@@ -75,7 +76,7 @@ class YAMLTest(unittest.TestCase):
 
 
 class PoppyCoreComponentsTest(unittest.TestCase):
-    """Test that the parser is able to correctly convert variables, reactions, rate functions, etc."""
+    """Test that the parser is able to correctly convert input to the correct components."""
 
     def setUp(self):
         self.raw_input = {'Initial conditions': {'x_s': 80, 'x_i': 20, 'x_r': 0},
@@ -117,6 +118,8 @@ class PoppyCoreComponentsTest(unittest.TestCase):
                                                                 self.input_data["Species"],
                                                                 self.input_data["Parameters"])
 
+        np.random.seed(42)
+
     def test_convert_all_reactions(self):
         for i, _ in enumerate(self.input_data["Reactions"]):
             reaction_obj = poppy.core.Reaction(self.input_data["Reactions"][i],
@@ -126,7 +129,7 @@ class PoppyCoreComponentsTest(unittest.TestCase):
                                             self.expected_update_vector[i]), True)
 
     def test_missing_value_raises_exc(self):
-        with self.assertRaisesRegex(ValueError, "Unable to find reagent '.*' inside the list of variables"):
+        with self.assertRaisesRegex(PoppyInputError, "Unable to find reagent '.*' inside the list of variables"):
             poppy.core.Reaction("R1 + R2 => 2 P1", self.input_data["Species"])
 
     def test_reaction_collection(self):
@@ -152,31 +155,37 @@ class PoppyCoreComponentsTest(unittest.TestCase):
                                            [-2., 16., -100.]))
 
     def test_rate_functions_collection_compute_dim_mismatch_exc(self):
-        with self.assertRaisesRegex(ValueError, "Array shapes mismatch: input vector \d, rate functions \d."):
+        with self.assertRaisesRegex(PoppyInputError, "Array shapes mismatch: input vector \d, rate functions \d."):
             self.rate_func_coll(np.array([1, 2]))
 
     def test_application_controller_shape_rate_func_diff_parameters(self):
-        with self.assertRaisesRegex(ValueError, "The number of Parameters \(\d\) is different "
+        with self.assertRaisesRegex(PoppyInputError, "The number of Parameters \(\d\) is different "
                                     "from the number of Rate functions \(\d\)"):
             self.raw_input["Rate functions"] = self.raw_input["Rate functions"][:-1]
             poppy.core.MainController(self.raw_input)
 
     def test_application_controller_unknown_algorithm(self):
-        with self.assertRaisesRegex(ValueError, "The algorithm chosen for the simulation must "
+        with self.assertRaisesRegex(PoppyInputError, "The algorithm to use in the simulation must "
                                     "be a string in '.*',?\."):
             self.raw_input["Simulation"] = "asdf"
             poppy.core.MainController(self.raw_input)
 
     def test_application_controller_multiple_algorithms_requested(self):
-        with self.assertRaisesRegex(ValueError, "The algorithm chosen for the simulation must "
+        with self.assertRaisesRegex(PoppyInputError, "The algorithm to use in the simulation must "
                                     "be a single string\."):
             self.raw_input["Simulation"] = None
             poppy.core.MainController(self.raw_input)
 
     def test_application_controller_multiple_dimension_sizes(self):
-        with self.assertRaisesRegex(ValueError, "The size of the system must be a single "
-                                    "parameter\. Found \d\."):
+        with self.assertRaisesRegex(PoppyInputError, "The size of the system must be a single "
+                                    "parameter\. Found: .*\."):
             self.raw_input["System size"] = {"N": 123, "M": 456}
+            poppy.core.MainController(self.raw_input)
+
+    def test_application_controller_missing_initial_condition(self):
+        with self.assertRaisesRegex(PoppyInputError, "The maximum simulation time parameter \(t_max\) "
+                                    "must be a number\. Found: .*\."):
+            self.raw_input["Maximum simulation time"] = [123, 456]
             poppy.core.MainController(self.raw_input)
 
     def test_application_controller_correct_handling(self):
@@ -203,6 +212,24 @@ class PoppyCoreComponentsTest(unittest.TestCase):
             self.assertEqual(True, np.allclose(expected_raw_reactions_upd_vec[idx],
                                                reac.update_vector))
 
+        self.assertEqual(controller._system_size.value, 100)
+        self.assertEqual(controller._t_max, 100)
+
         self.assertEqual(True, np.allclose(controller._initial_conditions, np.array([80, 20, 0])))
 
         self.assertEqual(controller._alg_function, poppy.simulators.ssa.SSA)
+
+    def test_application_controller_simulation(self):
+        controller = poppy.core.MainController(self.raw_input)
+
+        population, times = controller.simulate()
+
+        self.assertEqual(population.shape[1], len(self.raw_input['Species']))
+
+        self.assertEqual(True, np.allclose(population[-2:],
+                                           np.array([3, 12, 85, 3, 11, 86]).reshape(2, 3)))
+        self.assertEqual(True, np.allclose(times[-2:], np.array([99.01631504651024,
+                                                                 100.12470283342867])))
+
+    def tearDown(self):
+        np.random.seed()
