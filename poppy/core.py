@@ -246,6 +246,8 @@ class MainController:
             raise ValueError("The number of Parameters ({}) is different from the number of "
                              "Rate functions ({})".format(len(self._original_yaml["Parameters"]),
                                                           len(self._original_yaml["Rate functions"])))
+        elif len(self._original_yaml["Initial conditions"]) != len(self._original_yaml["Species"]):
+            raise ValueError("There must be an initial condition for each species.")
         elif len(self._original_yaml["System size"]) != 1:
             raise ValueError("The size of the system must be a single parameter. "
                              "Found {}.".format(len(self._original_yaml["System size"])))
@@ -270,8 +272,17 @@ class MainController:
         self._reactions = ReactionCollection(self._original_yaml["Reactions"], self._variables)
         self.update_matrix = self._reactions.update_matrix
 
-        self._initial_conditions = np.array(self._original_yaml["Initial conditions"])
+        self._t_max = self._original_yaml["Maximum simulation time"]
         self._system_size = Parameter(*tuple(self._original_yaml["System size"].items())[0])
+        # Extract the vector of initial conditions, with some checks on the species provided.
+        self._initial_conditions = np.empty(len(self._original_yaml["Initial conditions"]))
+        for species, initial_amount in self._original_yaml["Initial conditions"].items():
+            if not self._variables.get(species, False):
+                raise ValueError("Initial condition '{}: {}' does not match any species "
+                                 "provided.".format(species, initial_amount))
+            self._initial_conditions[self._variables[species].pos] = initial_amount
+
+        self.simulation_output = None
 
     @staticmethod
     def _associate_alg(str_alg):
@@ -281,9 +292,9 @@ class MainController:
         algorithms, since it has already already been checked in the __init__.
         """
         if str_alg.lower() in ("ssa", "gillespie"):
-            return simulators.ssa
+            return simulators.ssa.SSA
         elif str_alg.lower() in ("nrm", "next reaction method"):
-            return simulators.next_reaction_method
+            return simulators.next_reaction_method.next_reaction_method
         else:
             raise NotImplementedError("The chosen algorithm '{}' has not been "
                                       "implemented yet.".format(str_alg))
@@ -291,3 +302,10 @@ class MainController:
     @property
     def species(self):
         return self._variables
+
+    def simulate(self):
+        self.simulation_output = self._alg_function(self.update_matrix,
+                                                    self._initial_conditions,
+                                                    self._rate_functions,
+                                                    self._t_max)
+        return self.simulation_output

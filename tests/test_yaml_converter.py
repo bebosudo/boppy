@@ -78,13 +78,14 @@ class PoppyCoreComponentsTest(unittest.TestCase):
     """Test that the parser is able to correctly convert variables, reactions, rate functions, etc."""
 
     def setUp(self):
-        self.raw_input = {'Initial conditions': {'x_i': 20, 'x_r': 0, 'x_s': 80},
+        self.raw_input = {'Initial conditions': {'x_s': 80, 'x_i': 20, 'x_r': 0},
                           'Observables': ['tot = x + y'],
                           'Parameters': {'k_i': 1, 'k_r': 0.05, 'k_s': 0.01},
                           'Properties': {'x_s': 43},
                           'Rate functions': ['k_i * x_i * x_s / N', 'k_r * x_i', 'k_s * x_r'],
                           'Reactions': ['x_s + x_i => x_i + x_i', 'x_i => x_r', 'x_r => x_s'],
                           'Simulation': 'SSA',
+                          'Maximum simulation time': 100,
                           'Species': ['x_s', 'x_i', 'x_r'],
                           'System size': {'N': 100}
                           }
@@ -202,4 +203,6 @@ class PoppyCoreComponentsTest(unittest.TestCase):
             self.assertEqual(True, np.allclose(expected_raw_reactions_upd_vec[idx],
                                                reac.update_vector))
 
-        self.assertEqual(controller._alg_function, poppy.simulators.ssa)
+        self.assertEqual(True, np.allclose(controller._initial_conditions, np.array([80, 20, 0])))
+
+        self.assertEqual(controller._alg_function, poppy.simulators.ssa.SSA)

@@ -26,6 +26,8 @@ Initial conditions:
 System size:
   N: 100
 
+Maximum simulation time: 100
+
 Simulation: SSA
 
 Observables:
