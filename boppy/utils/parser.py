@@ -48,7 +48,7 @@ class CommonParserComponents:
 
 
 class FunctionParser(CommonParserComponents):
-    """A poppy valid Function has (almost) the same syntax of a python function."""
+    """A boppy valid Function has (almost) the same syntax of a python function."""
 
     def __init__(self):
         super(FunctionParser, self).__init__()

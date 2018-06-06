@@ -1,11 +1,11 @@
 Stochastic Modelling and Simulation course
 ==========================================
 
-The course final project consists in a group work. The goal is to implement a Python module, *poppy*, implementing functionalities to model and simulate population processes.
+The course final project consists in a group work. The goal is to implement a Python module, *boppy*, implementing functionalities to model and simulate population processes.
 
 The program has also to be tested on some examples of population models, mainly from systems biology.
 
-The functionalities of the poppy module should be the following:
+The functionalities of the boppy module should be the following:
 
 1. Taking as input a textual file containing a description of the population model in terms of biochemical reactions. Models should contain definition of population variables and of their of initial state, possibly with expressions involving parameters and other variables, of parameters and their values (possibly in terms of expressions), definition of functions, definition of biochemical reactions and their rate function, definition of model outputs, which can be variables or expressions involving variables.
    Models should contain a specification of the system size, so that quantities can be expressed either as population counts or densities.

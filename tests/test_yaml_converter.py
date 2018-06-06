@@ -1,9 +1,9 @@
 from . import context
 import unittest
-import poppy.core
-from poppy.utils.misc import PoppyInputError
-import poppy.simulators
-import poppy.file_parser
+import boppy.core
+from boppy.utils.misc import BoppyInputError
+import boppy.simulators
+import boppy.file_parser
 
 import os.path
 from tempfile import TemporaryDirectory
@@ -38,11 +38,11 @@ class YAMLTest(unittest.TestCase):
 
     def test_interpret_file_from_yaml_to_dict(self):
         self.assertTrue(self.expected_converted_dictionary ==
-                        poppy.file_parser.yaml_string_to_dict_converter(self.example_input_text))
+                        boppy.file_parser.yaml_string_to_dict_converter(self.example_input_text))
 
     def test_interpret_empty_file_from_yaml_to_dict(self):
         empty_input_file = ""
-        self.assertIsNone(poppy.file_parser.yaml_string_to_dict_converter(empty_input_file))
+        self.assertIsNone(boppy.file_parser.yaml_string_to_dict_converter(empty_input_file))
 
     def test_filename_to_dict(self):
         with TemporaryDirectory() as tmpdirname:
@@ -51,31 +51,31 @@ class YAMLTest(unittest.TestCase):
                 temp_fd.write(self.example_input_text)
 
             self.assertTrue(self.expected_converted_dictionary ==
-                            poppy.file_parser.filename_to_dict_converter(temp_filename))
+                            boppy.file_parser.filename_to_dict_converter(temp_filename))
 
     def test_empty_filename(self):
         with TemporaryDirectory() as tmpdirname:
             temp_filename = os.path.join(tmpdirname, "test_input.txt")
             with open(temp_filename, "w") as temp_fd:
                 temp_fd.write("")
-            self.assertIsNone(poppy.file_parser.filename_to_dict_converter(temp_filename))
+            self.assertIsNone(boppy.file_parser.filename_to_dict_converter(temp_filename))
 
             with open(temp_filename, "w") as temp_fd:
                 temp_fd.write("\n")
-            self.assertIsNone(poppy.file_parser.filename_to_dict_converter(temp_filename))
+            self.assertIsNone(boppy.file_parser.filename_to_dict_converter(temp_filename))
 
     def test_non_existing_filename(self):
         with TemporaryDirectory() as tmpdirname:
             temp_filename = os.path.join(tmpdirname, "test_input.txt")
             with self.assertRaises(FileNotFoundError):
-                poppy.file_parser.filename_to_dict_converter(temp_filename)
+                boppy.file_parser.filename_to_dict_converter(temp_filename)
 
     def tearDown(self):
         # Here we can place repetitive code that should be performed _after_ every test is executed.
         pass
 
 
-class PoppyCoreComponentsTest(unittest.TestCase):
+class BoppyCoreComponentsTest(unittest.TestCase):
     """Test that the parser is able to correctly convert input to the correct components."""
 
     def setUp(self):
@@ -92,8 +92,8 @@ class PoppyCoreComponentsTest(unittest.TestCase):
                           }
 
         # Data is different from the raw version above.
-        self.input_data = {"Species": poppy.core.VariableCollection(["x_s", "x_i", "x_r"]),
-                           "Parameters": poppy.core.ParameterCollection({'k_i': 1,
+        self.input_data = {"Species": boppy.core.VariableCollection(["x_s", "x_i", "x_r"]),
+                           "Parameters": boppy.core.ParameterCollection({'k_i': 1,
                                                                          'k_r': 0.05,
                                                                          'k_s': 0.01,
                                                                          'N': 100}),
@@ -114,7 +114,7 @@ class PoppyCoreComponentsTest(unittest.TestCase):
                                         x_s * x_i / 100,
                                         -6.0 * x_s * x_i / sym.Max(x_i, x_s) + 1.0 * x_i + x_r]
 
-        self.rate_func_coll = poppy.core.RateFunctionCollection(self.input_data["Rate functions"],
+        self.rate_func_coll = boppy.core.RateFunctionCollection(self.input_data["Rate functions"],
                                                                 self.input_data["Species"],
                                                                 self.input_data["Parameters"])
 
@@ -122,18 +122,18 @@ class PoppyCoreComponentsTest(unittest.TestCase):
 
     def test_convert_all_reactions(self):
         for i, _ in enumerate(self.input_data["Reactions"]):
-            reaction_obj = poppy.core.Reaction(self.input_data["Reactions"][i],
+            reaction_obj = boppy.core.Reaction(self.input_data["Reactions"][i],
                                                self.input_data["Species"])
 
             self.assertEqual(np.array_equiv(reaction_obj.update_vector,
                                             self.expected_update_vector[i]), True)
 
     def test_missing_value_raises_exc(self):
-        with self.assertRaisesRegex(PoppyInputError, "Unable to find reagent '.*' inside the list of variables"):
-            poppy.core.Reaction("R1 + R2 => 2 P1", self.input_data["Species"])
+        with self.assertRaisesRegex(BoppyInputError, "Unable to find reagent '.*' inside the list of variables"):
+            boppy.core.Reaction("R1 + R2 => 2 P1", self.input_data["Species"])
 
     def test_reaction_collection(self):
-        reaction_collection = poppy.core.ReactionCollection(self.input_data["Reactions"],
+        reaction_collection = boppy.core.ReactionCollection(self.input_data["Reactions"],
                                                             self.input_data["Species"])
 
         for reac, upd_vec in zip(reaction_collection, self.expected_update_vector):
@@ -141,7 +141,7 @@ class PoppyCoreComponentsTest(unittest.TestCase):
 
     def test_all_rate_functions(self):
         for i, _ in enumerate(self.input_data["Rate functions"]):
-            rate_func = poppy.core.RateFunction(self.input_data["Rate functions"][i],
+            rate_func = boppy.core.RateFunction(self.input_data["Rate functions"][i],
                                                 self.input_data["Species"],
                                                 self.input_data["Parameters"])
             self.assertEqual(rate_func.sym_function, self.expected_rate_functions[i])
@@ -155,41 +155,41 @@ class PoppyCoreComponentsTest(unittest.TestCase):
                                            [-2., 16., -100.]))
 
     def test_rate_functions_collection_compute_dim_mismatch_exc(self):
-        with self.assertRaisesRegex(PoppyInputError, "Array shapes mismatch: input vector \d, rate functions \d."):
+        with self.assertRaisesRegex(BoppyInputError, "Array shapes mismatch: input vector \d, rate functions \d."):
             self.rate_func_coll(np.array([1, 2]))
 
     def test_application_controller_shape_rate_func_diff_parameters(self):
-        with self.assertRaisesRegex(PoppyInputError, "The number of Parameters \(\d\) is different "
+        with self.assertRaisesRegex(BoppyInputError, "The number of Parameters \(\d\) is different "
                                     "from the number of Rate functions \(\d\)"):
             self.raw_input["Rate functions"] = self.raw_input["Rate functions"][:-1]
-            poppy.core.MainController(self.raw_input)
+            boppy.core.MainController(self.raw_input)
 
     def test_application_controller_unknown_algorithm(self):
-        with self.assertRaisesRegex(PoppyInputError, "The algorithm to use in the simulation must "
+        with self.assertRaisesRegex(BoppyInputError, "The algorithm to use in the simulation must "
                                     "be a string in '.*',?\."):
             self.raw_input["Simulation"] = "asdf"
-            poppy.core.MainController(self.raw_input)
+            boppy.core.MainController(self.raw_input)
 
     def test_application_controller_multiple_algorithms_requested(self):
-        with self.assertRaisesRegex(PoppyInputError, "The algorithm to use in the simulation must "
+        with self.assertRaisesRegex(BoppyInputError, "The algorithm to use in the simulation must "
                                     "be a single string\."):
             self.raw_input["Simulation"] = None
-            poppy.core.MainController(self.raw_input)
+            boppy.core.MainController(self.raw_input)
 
     def test_application_controller_multiple_dimension_sizes(self):
-        with self.assertRaisesRegex(PoppyInputError, "The size of the system must be a single "
+        with self.assertRaisesRegex(BoppyInputError, "The size of the system must be a single "
                                     "parameter\. Found: .*\."):
             self.raw_input["System size"] = {"N": 123, "M": 456}
-            poppy.core.MainController(self.raw_input)
+            boppy.core.MainController(self.raw_input)
 
     def test_application_controller_missing_initial_condition(self):
-        with self.assertRaisesRegex(PoppyInputError, "The maximum simulation time parameter \(t_max\) "
+        with self.assertRaisesRegex(BoppyInputError, "The maximum simulation time parameter \(t_max\) "
                                     "must be a number\. Found: .*\."):
             self.raw_input["Maximum simulation time"] = [123, 456]
-            poppy.core.MainController(self.raw_input)
+            boppy.core.MainController(self.raw_input)
 
     def test_application_controller_correct_handling(self):
-        controller = poppy.core.MainController(self.raw_input)
+        controller = boppy.core.MainController(self.raw_input)
         x_s, x_i, x_r, N, k_i, k_s, k_r = sym.symbols("x_s x_i x_r N k_i k_s k_r")
 
         set_of_variables = {x_s, x_i, x_r}
@@ -217,10 +217,10 @@ class PoppyCoreComponentsTest(unittest.TestCase):
 
         self.assertEqual(True, np.allclose(controller._initial_conditions, np.array([80, 20, 0])))
 
-        self.assertEqual(controller._alg_function, poppy.simulators.ssa.SSA)
+        self.assertEqual(controller._alg_function, boppy.simulators.ssa.SSA)
 
     def test_application_controller_simulation(self):
-        controller = poppy.core.MainController(self.raw_input)
+        controller = boppy.core.MainController(self.raw_input)
 
         population, times = controller.simulate()
 

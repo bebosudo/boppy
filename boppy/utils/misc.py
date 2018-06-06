@@ -4,7 +4,7 @@ import operator
 import sympy as sym
 
 
-class PoppyInputError(Exception):
+class BoppyInputError(Exception):
     pass
 
 

@@ -1,13 +1,13 @@
-Poppy: a population processes simulator in Python!
+boppy: BOppy Population Processes simulator in pYthon!
 ======================================================
 
-.. image:: https://gitlab.com/bebosudo/poppy/badges/master/pipeline.svg
-  :target: https://github.com/lucabortolussi/poppy/
+.. image:: https://gitlab.com/bebosudo/boppy/badges/master/pipeline.svg
+  :target: https://github.com/lucabortolussi/boppy/
 
-.. image:: https://gitlab.com/bebosudo/poppy/badges/master/coverage.svg
-  :target: https://github.com/lucabortolussi/poppy/
+.. image:: https://gitlab.com/bebosudo/boppy/badges/master/coverage.svg
+  :target: https://github.com/lucabortolussi/boppy/
 
-Tests performed on `Gitlab CI <https://gitlab.com/bebosudo/poppy/pipelines>`_.
+Tests performed on `Gitlab CI <https://gitlab.com/bebosudo/boppy/pipelines>`_.
 
 |
 

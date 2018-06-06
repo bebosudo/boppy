@@ -2,8 +2,8 @@
 
 from . import context
 import unittest
-import poppy.simulators.ssa as ssa
-import poppy.simulators.next_reaction_method as nrm
+import boppy.simulators.ssa as ssa
+import boppy.simulators.next_reaction_method as nrm
 
 import numpy as np
 
@@ -80,7 +80,7 @@ class SimulatorsTest(unittest.TestCase):
                                      exp_trajectory_times), True)
 
     # def test_Gillespie_1(self):
-    #     output = poppy.simulators.Gillespie(self.update_matrix_1,
+    #     output = boppy.simulators.Gillespie(self.update_matrix_1,
     #                                         self.initial_conditions_1,
     #                                         self.rate_vector_1,
     #                                         self.t_max_1)

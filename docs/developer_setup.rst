@@ -21,7 +21,7 @@ Test your installation::
 Create a virtual environment for a project::
 
     $ cd /somewhere/
-    $ virtualenv poppyenv
+    $ virtualenv boppyenv
 
 This creates a new directory where a copy of the python3 executable is stored. This is NOT the project directory, where the code is stored (which we are going to illustrate in a second), this is a sandbox containing the python interpreter and the library dependencies needed to run the code.
 
@@ -33,20 +33,20 @@ Once the *virtualenv* has been created, you need to run a configurator script ev
 
 On Linux/Mac::
 
-    $ source /somewhere/poppyenv/bin/activate
+    $ source /somewhere/boppyenv/bin/activate
 
 On Windows::
 
-    > \somewhere\poppyenv\Scripts\activate
+    > \somewhere\boppyenv\Scripts\activate
 
 This should add a label before your normal prompt label::
 
-    (poppyenv) [user@system]$
+    (boppyenv) [user@system]$
 
 
 To deactivate the virtualenv and return back to the normal python interpreter and libraries, just type ``deactivate`` at the command prompt.
 
-To test once more that the virtualenv is enabled, type ``which python`` (Linux/Mac?) or ``where python`` (Windows): it should return the path to the python3 executable that would be executed when launching python, and it should point to ``/somewhere/poppyenv/bin/python`` (``\somewhere\poppyenv\Scripts\python`` on Windows).
+To test once more that the virtualenv is enabled, type ``which python`` (Linux/Mac?) or ``where python`` (Windows): it should return the path to the python3 executable that would be executed when launching python, and it should point to ``/somewhere/boppyenv/bin/python`` (``\somewhere\boppyenv\Scripts\python`` on Windows).
 
 
 Libraries installation
@@ -133,7 +133,7 @@ Git reminder
 In need of a refresh on git? Here's a `cheatsheet <https://services.github.com/on-demand/downloads/github-git-cheat-sheet.pdf>`_ with some handy commands.
 A quick recap of a usual workflow is:
 
-* ``git pull`` **inside** the poppy directory to update your local repository;
+* ``git pull`` **inside** the boppy directory to update your local repository;
 * ``git status`` to check what's the status of your local repo, when you are ready to submit your changes, then
 * ``git add file1 file2 file3`` to add the files you want to be part of your commit (or add them separately), then
 * ``git commit -m "Write here a short message explaining your changes"`` to "wrap" all those changes in a new snapshot (called a "commit" in the git *jargon*), and eventually

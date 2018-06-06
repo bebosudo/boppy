@@ -5,7 +5,7 @@ import sympy as sym
 from . import simulators
 import numbers
 
-InputError = misc.PoppyInputError
+InputError = misc.BoppyInputError
 
 _LOGGER = logging.getLogger(__name__)
 
