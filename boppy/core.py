@@ -4,12 +4,14 @@ import numpy as np
 import sympy as sym
 from . import simulators
 import numbers
+from collections import defaultdict
 
 InputError = misc.BoppyInputError
 
 _LOGGER = logging.getLogger(__name__)
 
-ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm", "next reaction method", "ode", "tau-leaping")
+ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm",
+                    "next reaction method", "gibson bruck", "ode", "tau-leaping")
 
 
 class Variable:
@@ -86,21 +88,27 @@ class RateFunction:
         self._variables = variables_collection
         self._parameters = parameters_collection
 
-        self._pp_rate_function = parser.parse_function(self._orig_rate_function)
-        _LOGGER.debug("Parsed '%s' into: '%s'", self._orig_rate_function, self._pp_rate_function)
+        self._pp_rate_function = parser.parse_function(
+            self._orig_rate_function)
+        _LOGGER.debug("Parsed '%s' into: '%s'",
+                      self._orig_rate_function, self._pp_rate_function)
 
         tokenized_objs = (misc.Token(elem) for elem in self._pp_rate_function)
         rpn_tokens = parser.shunting_yard(tokenized_objs)
-        _LOGGER.debug("Converted '%s' to RPN sequence: '%s'", self._orig_rate_function, rpn_tokens)
+        _LOGGER.debug("Converted '%s' to RPN sequence: '%s'",
+                      self._orig_rate_function, rpn_tokens)
 
         function_with_params = parser.rpn_calculator(rpn_tokens)
         _LOGGER.debug("Converted RPN sequence '%s' to symbolic function: '%s'",
                       rpn_tokens, function_with_params)
 
-        # Convert back each Parameter object to {sympy object: actual value} and substitute it.
-        param_symbol_to_val = {val.symbol: val.value for val in parameters_collection.values()}
+        # Convert back each Parameter object to {sympy object: actual value}
+        # and substitute it.
+        param_symbol_to_val = {
+            val.symbol: val.value for val in parameters_collection.values()}
         self.sym_function = function_with_params.subs(param_symbol_to_val)
-        _LOGGER.debug("Substituted Parameters with their value; function '%s':", self.sym_function)
+        _LOGGER.debug(
+            "Substituted Parameters with their value; function '%s':", self.sym_function)
 
         self.lambdified = sym.lambdify(tuple(var.symbol for var in variables_collection.values()),
                                        self.sym_function)
@@ -125,9 +133,10 @@ class Reaction:
         _LOGGER.debug("Creating a new Reaction object: %s", str_reaction)
         self._orig_reaction = str_reaction
         self._variables = variables_collection
-        self._pp_reaction = None
         self._parse_reaction()
         self.update_vector = self._produce_update_vector()
+        self._depends_on()
+        self._affects()
 
     def _parse_reaction(self):
         self._pp_reaction = parser.parse_reaction(self._orig_reaction)
@@ -166,6 +175,17 @@ class Reaction:
     def __repr__(self):
         return str(self)
 
+    def _depends_on(self):
+        self.depends_on_vector = np.zeros(len(self._pp_reaction["reagents"]),
+                                          dtype=int)
+        for index, reagent in enumerate(self._pp_reaction["reagents"]):
+            var = self._extract_variable_from_input_list(reagent["symbol"])
+            self.depends_on_vector[index] = var.pos
+
+    def _affects(self):
+        affects_vector_temp = np.nonzero(self.update_vector)
+        self.affects_vector = affects_vector_temp[0]
+
 
 class CommonProxyMethods:
 
@@ -192,7 +212,8 @@ class VariableCollection(CommonProxyMethods):
     """
 
     def __init__(self, list_variables):
-        self._obj = {var: Variable(var, idx) for idx, var in enumerate(list_variables)}
+        self._obj = {var: Variable(var, idx)
+                     for idx, var in enumerate(list_variables)}
 
 
 class ParameterCollection(CommonProxyMethods):
@@ -225,7 +246,8 @@ class RateFunctionCollection(CommonProxyMethods):
                              "functions {}.".format(vector.shape[0], len(self._obj)))
 
         # CHEL: the elements in the output should always be positive.
-        # CHECK: should the sum of the output be equal/smaller than the system size?
+        # CHECK: should the sum of the output be equal/smaller than the system
+        # size?
         return np.array(tuple(rate_func.function(vector) for rate_func in self))
 
 
@@ -236,7 +258,11 @@ class ReactionCollection(CommonProxyMethods):
         self._obj = [Reaction(reaction_to_be_parsed, variables_collection)
                      for reaction_to_be_parsed in list_str_reactions]
 
-        self.update_matrix = np.stack((reac.update_vector for reac in self))
+        self.update_matrix = np.stack((reac.update_vector for reac in self._obj))
+        self.depends_on = np.array([reac.depends_on_vector for reac in self._obj])
+        self.affects = np.array([reac.affects_vector for reac in self._obj])
+        print('affects', self.affects)
+        print('depends', self.depends_on)
 
 
 class MainController:
@@ -250,7 +276,8 @@ class MainController:
                              " functions ({})".format(len(self._original_yaml["Parameters"]),
                                                       len(self._original_yaml["Rate functions"])))
         elif len(self._original_yaml["Initial conditions"]) != len(self._original_yaml["Species"]):
-            raise InputError("There must be an initial condition for each species.")
+            raise InputError(
+                "There must be an initial condition for each species.")
         elif len(self._original_yaml["System size"]) != 1:
             raise InputError("The size of the system must be a single parameter. "
                              "Found: {}.".format(len(self._original_yaml["System size"])))
@@ -270,7 +297,8 @@ class MainController:
         self._alg_function = self._associate_alg(self._alg_chosen)
 
         self._variables = VariableCollection(self._original_yaml["Species"])
-        # Treat the system size as a parameter, so it's substituted, e.g. in RateFunction objects.
+        # Treat the system size as a parameter, so it's substituted, e.g. in
+        # RateFunction objects.
         self._parameters = ParameterCollection(dict(self._original_yaml["Parameters"],
                                                     **self._original_yaml["System size"]))
 
@@ -280,14 +308,18 @@ class MainController:
         self.update_matrix = self._reactions.update_matrix
 
         self._t_max = self._original_yaml["Maximum simulation time"]
-        self._system_size = Parameter(*tuple(self._original_yaml["System size"].items())[0])
-        # Extract the vector of initial conditions, with some checks on the species provided.
-        self._initial_conditions = np.empty(len(self._original_yaml["Initial conditions"]))
+        self._system_size = Parameter(
+            *tuple(self._original_yaml["System size"].items())[0])
+        # Extract the vector of initial conditions, with some checks on the
+        # species provided.
+        self._initial_conditions = np.empty(
+            len(self._original_yaml["Initial conditions"]))
         for species, initial_amount in self._original_yaml["Initial conditions"].items():
             if not self._variables.get(species, False):
                 raise InputError("Initial condition '{}: {}' does not match any species "
                                  "provided.".format(species, initial_amount))
-            self._initial_conditions[self._variables[species].pos] = initial_amount
+            self._initial_conditions[
+                self._variables[species].pos] = initial_amount
 
         self.simulation_out_times = None
         self.simulation_out_population = None
@@ -301,7 +333,7 @@ class MainController:
         """
         if str_alg.lower() in ("ssa", "gillespie"):
             return simulators.ssa.SSA
-        elif str_alg.lower() in ("nrm", "next reaction method"):
+        elif str_alg.lower() in ("nrm", "next reaction method", "gibson bruck"):
             return simulators.next_reaction_method.next_reaction_method
         else:
             raise NotImplementedError("The chosen algorithm '{}' has not been "
@@ -315,7 +347,9 @@ class MainController:
         population, times = self._alg_function(self.update_matrix,
                                                self._initial_conditions,
                                                self._rate_functions,
-                                               self._t_max)
+                                               self._t_max,
+                                               self._reactions.depends_on_vector,
+                                               self._reactions.affects_vector)
 
         self.simulation_out_population, self.simulation_out_times = population, times
         return population, times
