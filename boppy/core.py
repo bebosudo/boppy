@@ -1,9 +1,9 @@
 import logging
-from utils import parser, misc
 import numpy as np
 import sympy as sym
-from simulators import ssa, next_reaction_method
 import numbers
+from utils import parser, misc
+from simulators import ssa, next_reaction_method
 
 InputError = misc.BoppyInputError
 
