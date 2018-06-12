@@ -24,12 +24,12 @@ def main():
 	except FileNotFoundError as e:
 		LOGGER.error("Unable to find file '%s' to be converted to a python dict.", out)
 		raise SystemExit()
-		
+
 	except yaml.scanner.ScannerError as exc:
 		LOGGER.error("Unable to correctly interpret the input file '%s'; traceback:\n%s\nexiting...", out, str(exc))
 		raise SystemExit()
 
-	core.MainController(yaml_converted_dict)
+	return core.MainController(yaml_converted_dict)
 
 if __name__ == "__main__":
 	main()
