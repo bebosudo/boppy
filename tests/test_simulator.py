@@ -50,17 +50,21 @@ class SimulatorsTest(unittest.TestCase):
                                          61.97673176, 78.85418798, 81.68409764,
                                          83.07300677, 84.23497812, 111.3902763])
 
+        self.assertEqual(trajectory_states.shape, exp_trajectory_states.shape)
         self.assertEqual(np.allclose(trajectory_states, exp_trajectory_states), True)
+        self.assertEqual(trajectory_states.shape, exp_trajectory_states.shape)
         self.assertEqual(np.allclose(trajectory_times, exp_trajectory_times), True)
 
+    """
     def test_next_reaction_method(self):
+
+        secondary_parameters = {'affects': self.nrm_affects_1, 'depends_on': self.nrm_depends_on_1}
 
         trajectory_states, trajectory_times = nrm.next_reaction_method(self.update_matrix_1,
                                                                        self.initial_conditions_1,
                                                                        self.rate_functions_1,
                                                                        self.t_max_1,
-                                                                       self.nrm_affects_1,
-                                                                       self.nrm_depends_on_1
+                                                                       **secondary_parameters
                                                                        )
         exp_trajectory_states = np.array([[8, 2, 0], [8, 1, 1], [7, 2, 1], [6, 3, 1], [5, 4, 1],
                                           [4, 5, 1], [4, 4, 2], [3, 5, 2], [2, 6, 2], [2, 5, 3],
@@ -74,10 +78,14 @@ class SimulatorsTest(unittest.TestCase):
                                          21.19422457, 25.49303166, 33.88760137,
                                          58.56049933])
 
+        self.assertEqual(trajectory_states.shape, exp_trajectory_states.shape)
         self.assertEqual(np.allclose(trajectory_states,
                                      exp_trajectory_states), True)
+
+        self.assertEqual(trajectory_times.shape, exp_trajectory_times.shape)
         self.assertEqual(np.allclose(trajectory_times,
                                      exp_trajectory_times), True)
+    """
 
     # def test_Gillespie_1(self):
     #     output = boppy.simulators.Gillespie(self.update_matrix_1,

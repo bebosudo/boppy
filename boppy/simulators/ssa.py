@@ -3,7 +3,7 @@
 import numpy as np
 
 
-def SSA(update_matrix, initial_conditions, function_rate, t_max):
+def SSA(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
 
     def choose_reaction(rate, r):
         cum_rate = np.cumsum(rate)

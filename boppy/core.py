@@ -2,17 +2,18 @@ import logging
 import numpy as np
 import sympy as sym
 import numbers
-from collections import defaultdict
-from utils import parser, misc
-from simulators import ssa, next_reaction_method
+from .utils import parser, misc
+from .simulators import ssa, next_reaction_method
+# import pdb
+# pdb.set_trace()
 
 
 InputError = misc.BoppyInputError
 
 _LOGGER = logging.getLogger(__name__)
 
-ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm",
-                    "next reaction method", "gibson bruck", "ode", "tau-leaping")
+ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm", "next reaction method", "gibson bruck",
+                    "gibson-bruck", "ode", "tau-leaping")
 
 
 class Variable:
@@ -262,8 +263,6 @@ class ReactionCollection(CommonProxyMethods):
         self.update_matrix = np.stack((reac.update_vector for reac in self._obj))
         self.depends_on = np.array([reac.depends_on_vector for reac in self._obj])
         self.affects = np.array([reac.affects_vector for reac in self._obj])
-        print('affects', self.affects)
-        print('depends', self.depends_on)
 
 
 class MainController:
@@ -277,8 +276,7 @@ class MainController:
                              " functions ({})".format(len(self._original_yaml["Parameters"]),
                                                       len(self._original_yaml["Rate functions"])))
         elif len(self._original_yaml["Initial conditions"]) != len(self._original_yaml["Species"]):
-            raise InputError(
-                "There must be an initial condition for each species.")
+            raise InputError("There must be an initial condition for each species.")
         elif len(self._original_yaml["System size"]) != 1:
             raise InputError("The size of the system must be a single parameter. "
                              "Found: {}.".format(len(self._original_yaml["System size"])))
@@ -288,14 +286,12 @@ class MainController:
 
         self._alg_chosen = self._original_yaml["Simulation"]
         if not isinstance(self._alg_chosen, str):
-            raise InputError(
-                "The algorithm to use in the simulation must be a single string.")
+            raise InputError("The algorithm to use in the simulation must be a single string.")
         elif self._alg_chosen.lower() not in ALGORITHMS_AVAIL:
             raise InputError("The algorithm to use in the simulation must be a string in "
                              "{}.".format(", ".join((repr(alg) for alg in ALGORITHMS_AVAIL))))
 
-        self._alg_chosen = self._alg_chosen
-        self._alg_function = self._associate_alg(self._alg_chosen)
+        self._associate_alg(self._alg_chosen)
 
         self._variables = VariableCollection(self._original_yaml["Species"])
         # Treat the system size as a parameter, so it's substituted, e.g. in
@@ -309,36 +305,38 @@ class MainController:
         self.update_matrix = self._reactions.update_matrix
 
         self._t_max = self._original_yaml["Maximum simulation time"]
-        self._system_size = Parameter(
-            *tuple(self._original_yaml["System size"].items())[0])
+        self._system_size = Parameter(*tuple(self._original_yaml["System size"].items())[0])
+
         # Extract the vector of initial conditions, with some checks on the
         # species provided.
-        self._initial_conditions = np.empty(
-            len(self._original_yaml["Initial conditions"]))
+        self._initial_conditions = np.empty(len(self._original_yaml["Initial conditions"]))
         for species, initial_amount in self._original_yaml["Initial conditions"].items():
             if not self._variables.get(species, False):
                 raise InputError("Initial condition '{}: {}' does not match any species "
                                  "provided.".format(species, initial_amount))
-            self._initial_conditions[
-                self._variables[species].pos] = initial_amount
+            self._initial_conditions[self._variables[species].pos] = initial_amount
 
         self.simulation_out_times = None
         self.simulation_out_population = None
 
-    @staticmethod
-    def _associate_alg(str_alg):
-        """Given the algorithm name as string, returns the function to call that matches that name.
+    def _associate_alg(self, str_alg):
+        """Given the algorithm, set the function that matches it and a dict of optional parameters.
 
         Does not check again whether the algorithm in the string passed is part of the available
-        algorithms, since it has already already been checked in the __init__.
+        algorithms, since it should have already been checked in the `__init__`.
+
+        Save into `self._secondary_args` optional arguments that are then passed to the
+        simulator.
         """
+        self._secondary_args = {}
+
         if str_alg.lower() in ("ssa", "gillespie"):
-            return simulators.ssa.SSA
-        elif str_alg.lower() in ("nrm", "next reaction method", "gibson bruck"):
-            return simulators.next_reaction_method.next_reaction_method
-            return ssa.SSA
-        elif str_alg.lower() in ("nrm", "next reaction method"):
-            return next_reaction_method.next_reaction_method
+            self._selected_alg = ssa.SSA
+        elif str_alg.lower() in ("nrm", "next reaction method", "gibson bruck", "gibson-bruck"):
+            self._secondary_args.update({'depends_on': self._reactions.depends_on,
+                                         'affects': self._reactions.affects})
+            self._selected_alg = next_reaction_method.next_reaction_method
+
         else:
             raise NotImplementedError("The chosen algorithm '{}' has not been "
                                       "implemented yet.".format(str_alg))
@@ -348,12 +346,11 @@ class MainController:
         return self._variables
 
     def simulate(self):
-        population, times = self._alg_function(self.update_matrix,
+        population, times = self._selected_alg(self.update_matrix,
                                                self._initial_conditions,
                                                self._rate_functions,
                                                self._t_max,
-                                               self._reactions.depends_on_vector,
-                                               self._reactions.affects_vector)
+                                               **self._secondary_args)
 
         self.simulation_out_population, self.simulation_out_times = population, times
         return population, times

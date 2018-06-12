@@ -3,7 +3,7 @@ import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
 
 
-def next_reaction_method(update_matrix, initial_mol_number, propensity_function, t_max):
+def next_reaction_method(update_matrix, initial_mol_number, propensity_function, t_max, **kwargs):
     """
     This function implements the Next Reaction Method from Gibson and Bruck.
 
@@ -11,6 +11,10 @@ def next_reaction_method(update_matrix, initial_mol_number, propensity_function,
     M.A. Gibson and J.Bruck "Efficient Exact Stochastic Simulation of Chemical Systems with Many Species and Many Channels",
     The Journal of Physical Chemistry A, 2000, 104 (9), 1876-1889
     """
+
+    # Retrieve the vectors to use to build the dependency graph.
+    depends_on_vector = kwargs['depends_on']
+    affects_vector = kwargs['affects']
 
     # Initialize
     mol_number = np.copy(initial_mol_number)

@@ -236,7 +236,7 @@ class BoppyCoreComponentsTest(unittest.TestCase):
         self.assertEqual(True, np.allclose(
             controller._initial_conditions, np.array([80, 20, 0])))
 
-        self.assertEqual(controller._alg_function, boppy.simulators.ssa.SSA)
+        self.assertEqual(controller._selected_alg, boppy.simulators.ssa.SSA)
 
     def test_application_controller_simulation(self):
         controller = boppy.core.MainController(self.raw_input)
