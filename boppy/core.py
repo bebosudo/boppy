@@ -1,10 +1,11 @@
 import logging
-from .utils import parser, misc
 import numpy as np
 import sympy as sym
-from . import simulators
 import numbers
 from collections import defaultdict
+from utils import parser, misc
+from simulators import ssa, next_reaction_method
+
 
 InputError = misc.BoppyInputError
 
@@ -335,6 +336,9 @@ class MainController:
             return simulators.ssa.SSA
         elif str_alg.lower() in ("nrm", "next reaction method", "gibson bruck"):
             return simulators.next_reaction_method.next_reaction_method
+            return ssa.SSA
+        elif str_alg.lower() in ("nrm", "next reaction method"):
+            return next_reaction_method.next_reaction_method
         else:
             raise NotImplementedError("The chosen algorithm '{}' has not been "
                                       "implemented yet.".format(str_alg))
