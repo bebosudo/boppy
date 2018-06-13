@@ -1,4 +1,5 @@
 import numpy as np
+import boppy.core
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -25,6 +26,9 @@ def next_reaction_method(update_matrix, initial_mol_number, propensity_function,
     trajectory_states = []   # States
     trajectory_ftimes = []   # Firing times
 
+    # Generate a dependecy graph
+    dependecy_graph = boppy.core.DependencyGraph(affects_vector, depends_on_vector)
+
     # Calculate the propensity function for each reaction
     propensity_val = propensity_function(initial_mol_number)
 
@@ -49,7 +53,7 @@ def next_reaction_method(update_matrix, initial_mol_number, propensity_function,
         propensity_val_new = propensity_function(mol_number)
 
         # Update the putative times
-        for reaction_index in range(0, num_reactions):
+        for reaction_index in dependecy_graph.graph[next_reaction_index]:
             if (reaction_index == next_reaction_index) or (propensity_val[reaction_index] == 0 and propensity_val_new[reaction_index] != 0):
                 putative_times[reaction_index] = - 1 / propensity_val_new[reaction_index] * \
                     np.log(np.random.random(1)) + time_simul

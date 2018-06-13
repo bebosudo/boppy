@@ -2,6 +2,7 @@ import logging
 import numpy as np
 import sympy as sym
 import numbers
+from collections import defaultdict
 from .utils import parser, misc
 from .simulators import ssa, next_reaction_method
 # import pdb
@@ -177,16 +178,18 @@ class Reaction:
     def __repr__(self):
         return str(self)
 
+    def _affects(self):
+        """Create the vector of variables that change quantity when a reaction is executed."""
+        affects_vector_temp = np.nonzero(self.update_vector)
+        self.affects_vector = affects_vector_temp[0]
+
     def _depends_on(self):
+        """Create the vector of reactants of a reaction."""
         self.depends_on_vector = np.zeros(len(self._pp_reaction["reagents"]),
                                           dtype=int)
         for index, reagent in enumerate(self._pp_reaction["reagents"]):
             var = self._extract_variable_from_input_list(reagent["symbol"])
             self.depends_on_vector[index] = var.pos
-
-    def _affects(self):
-        affects_vector_temp = np.nonzero(self.update_vector)
-        self.affects_vector = affects_vector_temp[0]
 
 
 class CommonProxyMethods:
@@ -263,6 +266,18 @@ class ReactionCollection(CommonProxyMethods):
         self.update_matrix = np.stack((reac.update_vector for reac in self._obj))
         self.depends_on = np.array([reac.depends_on_vector for reac in self._obj])
         self.affects = np.array([reac.affects_vector for reac in self._obj])
+
+
+class DependencyGraph:
+    """Given the vector of variables that change quantity when a reaction is executed and the
+    vector of reactans, create the dependency graph."""
+
+    def __init__(self, affects, depends_on):
+        self.graph = defaultdict(set)
+        for i in range(0, len(affects)):
+            for j in range(0, len(affects)):
+                if len(np.intersect1d(affects[i], depends_on[j])) != 0:
+                    self.graph[i].add(j)
 
 
 class MainController:
