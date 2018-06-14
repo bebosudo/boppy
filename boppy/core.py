@@ -274,10 +274,10 @@ class DependencyGraph:
 
     def __init__(self, affects, depends_on):
         self.graph = defaultdict(set)
-        for i in range(0, len(affects)):
-            for j in range(0, len(affects)):
-                if len(np.intersect1d(affects[i], depends_on[j])) != 0:
-                    self.graph[i].add(j)
+        for affects_index, affects_reaction in enumerate(affects):
+            for depends_on_index, depends_on_reaction in enumerate(depends_on):
+                if len(np.intersect1d(affects_reaction, depends_on_reaction)) != 0:
+                    self.graph[affects_index].add(depends_on_index)
 
 
 class MainController:
