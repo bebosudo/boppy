@@ -1,10 +1,10 @@
 import pyparsing as pp
-from collections import deque
+from collections import deque, namedtuple
 import sympy as sym
 
 from .misc import ARITH_OPS, AVAIL_FUNCTIONS, FUNC_ARGS_SEPARATOR
 
-DIGITS_PRECISION = 14
+REACTION_ELEMENT_TUPLE = namedtuple("ReactionElement", ("symbol", "quantity"))
 
 
 class CommonParserComponents:
@@ -32,14 +32,15 @@ class CommonParserComponents:
         self.opt_signed_int = (pp.Combine(self.opt_plus_minus + self.unsigned_int)
                                .setParseAction(lambda el: int(el[0])))
 
-        self.float_num = pp.Combine(self.opt_plus_minus +
-                                    ((self.unsigned_int + self.point + pp.Optional(self.unsigned_int)) ^
-                                     (self.point + self.unsigned_int)
-                                     ) +
-                                    pp.Optional(pp.CaselessLiteral("e") + self.opt_signed_int)
-                                    ).setParseAction(lambda el: float(el[0]))
+        self.float_num = (((self.unsigned_int + self.point + pp.Optional(self.unsigned_int)) ^
+                           (self.point + self.unsigned_int)) +
+                          pp.Optional(pp.CaselessLiteral("e") + self.opt_signed_int))
 
-        self.real_num = (self.float_num ^ self.opt_signed_int)
+        self.real_num_pos = (pp.Combine(self.float_num).setParseAction(lambda el: float(el[0])) ^
+                             self.unsigned_int.setParseAction(lambda el: int(el[0])))
+        self.real_num = (pp.Combine(self.opt_plus_minus +
+                                    self.float_num).setParseAction(lambda el: float(el[0])) ^
+                         self.opt_signed_int.setParseAction(lambda el: int(el[0])))
 
         self.variable_name = pp.Word(pp.alphas + "_", pp.alphas + pp.nums + "_")
         # self.variable = pp.Combine(self.opt_plus_minus +
@@ -87,8 +88,10 @@ class ReactionParser(CommonParserComponents):
         reagents_sum_sym = pp.Suppress("+")
 
         # A missing quantity must be interpreted as 1 unit.
-        qtt_with_sym = pp.Group(pp.Optional(self.real_num, default=1).setResultsName("quantity") +
-                                self.variable_name.setResultsName("symbol"))
+        qtt_with_sym = pp.Group(
+            pp.Optional(self.real_num_pos, default=1).setResultsName("quantity") +
+            self.variable_name.setResultsName("symbol")
+        )
 
         self.reaction = (pp.Group(qtt_with_sym +
                                   pp.ZeroOrMore(reagents_sum_sym + qtt_with_sym)
@@ -108,7 +111,19 @@ _REACTION_GRAMMAR = ReactionParser()
 
 
 def parse_reaction(str_reaction):
-    return _REACTION_GRAMMAR.parseString(str_reaction)
+    """Convert reagents and products into a list of symbols and quantity.
+
+    The quantity of each reagent is multiplied by -1, so that they can be subtracted when
+    calculating the update vector.
+    """
+
+    pp_reaction = _REACTION_GRAMMAR.parseString(str_reaction)
+
+    reagents = tuple(REACTION_ELEMENT_TUPLE(reagent["symbol"], -1 * reagent["quantity"])
+                     for reagent in pp_reaction["reagents"])
+    products = tuple(REACTION_ELEMENT_TUPLE(reagent["symbol"], reagent["quantity"])
+                     for reagent in pp_reaction["products"])
+    return {"reagents": reagents, "products": products}
 
 
 def parse_function(str_function):

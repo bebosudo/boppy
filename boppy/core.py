@@ -2,12 +2,11 @@ import logging
 import numpy as np
 import sympy as sym
 import numbers
+import itertools
 from collections import defaultdict
+
 from .utils import parser, misc
 from .simulators import ssa, next_reaction_method
-# import pdb
-# pdb.set_trace()
-
 
 InputError = misc.BoppyInputError
 
@@ -136,16 +135,20 @@ class Reaction:
         _LOGGER.debug("Creating a new Reaction object: %s", str_reaction)
         self._orig_reaction = str_reaction
         self._variables = variables_collection
+
+        self._dict_reaction = self.update_vector = None
+        self.affects_vector = self.depends_on_vector = None
+
         self._parse_reaction()
-        self.update_vector = self._produce_update_vector()
+        self._produce_update_vector()
         self._depends_on()
         self._affects()
 
     def _parse_reaction(self):
-        self._pp_reaction = parser.parse_reaction(self._orig_reaction)
+        self._dict_reaction = parser.parse_reaction(self._orig_reaction)
         _LOGGER.debug("Parsed string %s to Reaction object: %s",
                       self._orig_reaction,
-                      self._pp_reaction)
+                      self._dict_reaction)
 
     def _extract_variable_from_input_list(self, symbol):
         try:
@@ -155,22 +158,16 @@ class Reaction:
                              "provided {}".format(symbol, self._variables))
 
     def _produce_update_vector(self):
-        """Create the update vector from the parsed reaction and the list of Variable objects.
+        """Create the update vector from the dictionary coming from reaction and the list of Variable objects.
 
         It searches for a match for each reagent, raising an exception if one of the variables in
         the pyparsing object is not present inside the list of Variable objects.
         """
-        update_vec = np.zeros(len(self._variables), dtype=float)
+        self.update_vector = np.zeros(len(self._variables), dtype=float)
 
-        # Each reagent used in the reaction decreases the quantity available, while the products
-        # increase it.
-        for elements, multiplier in (("reagents", -1), ("products", 1)):
-            for reagent in self._pp_reaction[elements]:
-
-                var = self._extract_variable_from_input_list(reagent["symbol"])
-                update_vec[var.pos] += reagent["quantity"] * multiplier
-
-        return update_vec
+        for symbol, quantity in itertools.chain.from_iterable(self._dict_reaction.values()):
+            var = self._extract_variable_from_input_list(symbol)
+            self.update_vector[var.pos] += quantity
 
     def __str__(self):
         return self.__class__.__name__ + "(" + repr(self._orig_reaction) + ")"
@@ -180,15 +177,17 @@ class Reaction:
 
     def _affects(self):
         """Create the vector of variables that change quantity when a reaction is executed."""
-        affects_vector_temp = np.nonzero(self.update_vector)
-        self.affects_vector = affects_vector_temp[0]
+        self.affects_vector = np.nonzero(self.update_vector)[0]
 
     def _depends_on(self):
-        """Create the vector of reactants of a reaction."""
-        self.depends_on_vector = np.zeros(len(self._pp_reaction["reagents"]),
-                                          dtype=int)
-        for index, reagent in enumerate(self._pp_reaction["reagents"]):
-            var = self._extract_variable_from_input_list(reagent["symbol"])
+        """Create the vector of reactants of a reaction.
+
+        The position in the depends_on vector is not really important, since then only the
+        intersection with the affects is useful.
+        """
+        self.depends_on_vector = np.zeros(len(self._dict_reaction["reagents"]), dtype=int)
+        for index, reagent in enumerate(self._dict_reaction["reagents"]):
+            var = self._extract_variable_from_input_list(reagent.symbol)
             self.depends_on_vector[index] = var.pos
 
 
