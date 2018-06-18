@@ -10,5 +10,6 @@ Pygments==2.2.0
 pyparsing==2.2.0
 PyYAML==3.12
 six==1.11.0
+scipy==1.1.0
 sympy==1.1.1
 wmctrl==0.3
