@@ -246,9 +246,8 @@ class BoppyCoreComponentsTest(unittest.TestCase):
         self.assertEqual(population.shape[1], len(self.raw_input['Species']))
 
         self.assertEqual(True, np.allclose(population[-2:],
-                                           np.array([3, 12, 85, 3, 11, 86]).reshape(2, 3)))
-        self.assertEqual(True, np.allclose(times[-2:], np.array([99.01631504651024,
-                                                                 100.12470283342867])))
+                                           np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))
+        self.assertEqual(True, np.allclose(times[-2:], np.array([99.438658085172847, 100.21927360825548])))
 
     def tearDown(self):
         np.random.seed()
