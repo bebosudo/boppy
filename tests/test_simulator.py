@@ -32,7 +32,7 @@ class SimulatorsTest(unittest.TestCase):
                                                       self.rate_functions_1,
                                                       self.t_max_1)
 
-        exp_trajectory_states = np.array([[8, 2, 0],[7, 3, 0],[6, 4, 0],5, 5, 0],
+        exp_trajectory_states = np.array([[8, 2, 0],[7, 3, 0],[6, 4, 0],[5, 5, 0],
                                           [5, 4, 1],[4, 5, 1],[4, 4, 2],[3, 5, 2],
                                           [2, 6, 2],[1, 7, 2],[0, 8, 2],[0, 7, 3],
                                           [0, 6, 4],[0, 5, 5],[0, 4, 6],[0, 3, 7],
