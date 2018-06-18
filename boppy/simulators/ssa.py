@@ -38,6 +38,7 @@ def SSA(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
     
         return int(i - cut_value)
 
+    i = 0
     #vector of number of reaction for each times
     data_vector = []
     data_vector.append(initial_conditions)
@@ -69,5 +70,7 @@ def SSA(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
 
         time_vector.append(app_t)
         data_vector.append(initial_conditions)
+
+        i += 1
 
     return np.array(data_vector), time_vector
