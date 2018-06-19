@@ -6,14 +6,15 @@ import itertools
 from collections import defaultdict
 
 from .utils import parser, misc
-from .simulators import ssa, next_reaction_method
+from .simulators import ssa, next_reaction_method, fluid_approximation
 
 InputError = misc.BoppyInputError
 
 _LOGGER = logging.getLogger(__name__)
 
 ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm", "next reaction method", "gibson bruck",
-                    "gibson-bruck", "ode", "tau-leaping")
+                    "gibson-bruck", "fluid approximation", "fluid limit", "mean field",
+                    "ode", "tau-leaping")
 
 
 class Variable:
@@ -29,6 +30,10 @@ class Variable:
         if isinstance(self, other.__class__):
             return self.__dict__ == other.__dict__
         return NotImplemented
+
+    @property
+    def str_var(self):
+        return self._str_var
 
     @property
     def pos(self):
@@ -158,7 +163,8 @@ class Reaction:
                              "provided {}".format(symbol, self._variables))
 
     def _produce_update_vector(self):
-        """Create the update vector from the dictionary coming from reaction and the list of Variable objects.
+        """
+        Create the update vector from the dictionary coming from reaction and the list of Variable objects.
 
         It searches for a match for each reagent, raising an exception if one of the variables in
         the pyparsing object is not present inside the list of Variable objects.
@@ -312,9 +318,14 @@ class MainController:
         # RateFunction objects.
         self._parameters = ParameterCollection(dict(self._original_yaml["Parameters"],
                                                     **self._original_yaml["System size"]))
+        self._parameters_wo_system_size = ParameterCollection(self._original_yaml["Parameters"])
 
         self._rate_functions = RateFunctionCollection(self._original_yaml["Rate functions"],
                                                       self._variables, self._parameters)
+        self._rate_functions_variable_system_size = RateFunctionCollection(
+            self._original_yaml["Rate functions"],
+            self._variables,
+            self._parameters_wo_system_size)
         self._reactions = ReactionCollection(self._original_yaml["Reactions"], self._variables)
         self.update_matrix = self._reactions.update_matrix
 
@@ -350,6 +361,10 @@ class MainController:
             self._secondary_args.update({'depends_on': self._reactions.depends_on,
                                          'affects': self._reactions.affects})
             self._selected_alg = next_reaction_method.next_reaction_method
+        elif str_alg.lower() in ("fluid approximation", "fluid limit", "mean field", "ode"):
+            self._secondary_args.update(
+                {'rate_functions_var_ss': self._rate_functions_variable_system_size})
+            self._selected_alg = fluid_approximation.fluid_approximation
 
         else:
             raise NotImplementedError("The chosen algorithm '{}' has not been "
