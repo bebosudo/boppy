@@ -164,7 +164,8 @@ class Reaction:
 
     def _produce_update_vector(self):
         """
-        Create the update vector from the dictionary coming from reaction and the list of Variable objects.
+        Create the update vector from the dictionary coming from reaction and the list of Variable
+        objects.
 
         It searches for a match for each reagent, raising an exception if one of the variables in
         the pyparsing object is not present inside the list of Variable objects.
@@ -289,6 +290,7 @@ class MainController:
     """Entry point class that handles the input interpretation and the simulation execution."""
 
     def __init__(self, dict_converted_yaml):
+
         self._original_yaml = dict_converted_yaml
 
         if len(self._original_yaml["Parameters"]) != len(self._original_yaml["Rate functions"]):
@@ -310,8 +312,6 @@ class MainController:
         elif self._alg_chosen.lower() not in ALGORITHMS_AVAIL:
             raise InputError("The algorithm to use in the simulation must be a string in "
                              "{}.".format(", ".join((repr(alg) for alg in ALGORITHMS_AVAIL))))
-
-        self._associate_alg(self._alg_chosen)
 
         self._variables = VariableCollection(self._original_yaml["Species"])
         # Treat the system size as a parameter, so it's substituted, e.g. in
@@ -343,6 +343,7 @@ class MainController:
 
         self.simulation_out_times = None
         self.simulation_out_population = None
+        self._associate_alg(self._alg_chosen)
 
     def _associate_alg(self, str_alg):
         """Given the algorithm, set the function that matches it and a dict of optional parameters.
