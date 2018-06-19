@@ -124,6 +124,8 @@ Another useful plugin is ``AutoPep8``: it provides an automatic formatter that a
 
 An optional plugin could be ``reStructuredText Improved``, which gives syntax highlighting to ``.rst`` files, such as this one.
 
+Another important setting: at the bottom right of the window select the tab ``Spaces: X``, then click ``Indent with spaces``, ``Tab width: 4`` and also ``Convert indentation to spaces``.
+
 Close and restart and your editor should be up and running.
 
 
