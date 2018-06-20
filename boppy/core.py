@@ -364,7 +364,9 @@ class MainController:
             self._selected_alg = next_reaction_method.next_reaction_method
         elif str_alg.lower() in ("fluid approximation", "fluid limit", "mean field", "ode"):
             self._secondary_args.update(
-                {'rate_functions_var_ss': self._rate_functions_variable_system_size})
+                {'rate_functions_var_ss': self._rate_functions_variable_system_size,
+                 'variables': self._variables,
+                 'system_size': self._system_size.value})
             self._selected_alg = fluid_approximation.fluid_approximation
 
         else:
