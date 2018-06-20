@@ -48,8 +48,6 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
         f_functions_vector = []
         for ratefun in rate_functions_vector:
             n = len(variables_involved(ratefun))
-            import pdb
-            pdb.set_trace()
             ratefun = ratefun.sym_function
             ratefun.subs(substitutor_dict)
             ratefun_normalized = ratefun * (N**n)
@@ -66,4 +64,4 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
     def mydot(matrix, vector):
         pass
 
-    # odenint(mydot(update_matrix, f_funcs), d_initial_conditions , t)
+    # odeint(mydot(update_matrix, f_funcs), d_initial_conditions , t)
