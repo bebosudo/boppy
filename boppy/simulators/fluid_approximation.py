@@ -30,11 +30,6 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
 
     d_initial_conditions = [x / system_size for x in initial_conditions]
 
-    # Dictionary to substitute densities symbols with their numerical values.
-    densities = {}
-    for i, val in enumerate(var_to_substitute.values()):
-        densities[val] = d_initial_conditions[i]
-
     def scaling(rate_functions_vector, substitutor_dict):
         """
         This function scales the rate functions, normalizing individuals variables with densities
@@ -59,12 +54,25 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
 
     f_funcs = scaling(rate_funcs_N, var_to_substitute)
 
-    print(f_funcs)
+    def create_equations(np_matrix, symbolic_functions_vector):
+        spam = []
+        for i in range(len(np_matrix)):
+            foo = []
+            for f, elem in zip(symbolic_functions_vector, np_matrix[i]):
+                foo.append(f*elem)
+            spam.append(sum(foo))
 
-    # To complete from here
-    def mydot(matrix, vector):
-        pass
+        return spam
 
-    # mydot(update_matrix, f_funcs)
-    # another function here...
-    # odeint(another function..., densities , t)
+    def spamspamspam(x, t):
+        foofoo = []
+        for dens_symbol in var_to_substitute.values():
+            foofoo.append(dens_symbol)
+        egg = []
+        for each in create_equations(update_matrix, f_funcs):
+            each = each.evalf(subs={foofoo[0]: x[0], foofoo[1]: x[1], foofoo[2]: x[2]})
+            egg.append(each)
+        return egg
+
+    print(odeint(spamspamspam, d_initial_conditions, t))
+    return
