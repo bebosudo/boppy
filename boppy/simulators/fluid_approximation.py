@@ -74,5 +74,7 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
             egg.append(each)
         return egg
 
-    print(odeint(spamspamspam, d_initial_conditions, t))
-    return
+    trajectories_states = odeint(spamspamspam, d_initial_conditions, t)
+    trajectories_times = t
+
+    return np.array(trajectories_states), np.array(trajectories_times)
