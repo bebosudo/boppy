@@ -55,26 +55,34 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
     f_funcs = scaling(rate_funcs_N, var_to_substitute)
 
     def create_equations(np_matrix, symbolic_functions_vector):
-        spam = []
+        """
+        This function make a matrix product between a numerical matrix and a vector of functions
+        of type symbol, obtaining linear equations.
+        """
+        equations_list = []
         for i in range(len(np_matrix)):
             foo = []
             for f, elem in zip(symbolic_functions_vector, np_matrix[i]):
                 foo.append(f*elem)
-            spam.append(sum(foo))
+            equations_list.append(sum(foo))
 
-        return spam
+        return equations_list
 
-    def spamspamspam(x, t):
+    def ode_model(x, t):
+        """
+        This function operate to generate the correct input for 'odeint', that is a function 
+        that needs 2 values, a vector of initial conditions and time.
+        """
         foofoo = []
         for dens_symbol in var_to_substitute.values():
             foofoo.append(dens_symbol)
         egg = []
-        for each in create_equations(update_matrix, f_funcs):
-            each = each.evalf(subs={foofoo[0]: x[0], foofoo[1]: x[1], foofoo[2]: x[2]})
-            egg.append(each)
+        for equation in create_equations(update_matrix, f_funcs):
+            equation = equation.evalf(subs={foofoo[0]: x[0], foofoo[1]: x[1], foofoo[2]: x[2]})
+            egg.append(equation)
         return egg
 
-    trajectories_states = odeint(spamspamspam, d_initial_conditions, t)
+    trajectories_states = odeint(ode_model, d_initial_conditions, t)
     trajectories_times = t
 
     return np.array(trajectories_states), np.array(trajectories_times)
