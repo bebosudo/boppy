@@ -5,6 +5,9 @@ from scipy.integrate import odeint
 
 def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
     """
+    Mean field - fluid approximation method - returns a deterministic model for populations 
+    processes, that represents species trajectories for 'large system size' (studies the 
+    limit to infinite).
     Secondary arguments. In these rate functions variable system size is represented by N.
     Also needed the costant system size.
     """
@@ -52,13 +55,6 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
 
         return eqs_list
 
-    # Dictionary to substitute individuals variables symbols with densities variables symbols.
-    var_to_substitute = {}
-    for var_obj in variables.values():
-        var_to_substitute[var_obj.symbol] = sym.Symbol('d_' + var_obj.str_var)
-
-    f_funcs = scaling(rate_funcs_N, var_to_substitute)
-
     def ode_model(x, t):
         """
         Generate the correct input for 'odeint'.
@@ -70,6 +66,13 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
 
         return [equation.evalf(subs=dict(zip(var_to_substitute.values(), x)))
                 for equation in create_equations(update_matrix, f_funcs)]
+
+    # Dictionary to substitute individuals variables symbols with densities variables symbols.
+    var_to_substitute = {}
+    for var_obj in variables.values():
+        var_to_substitute[var_obj.symbol] = sym.Symbol('d_' + var_obj.str_var)
+
+    f_funcs = scaling(rate_funcs_N, var_to_substitute)
 
     d_initial_conditions = [x / system_size.value for x in initial_conditions]
     t = np.linspace(0, t_max, 1000)
