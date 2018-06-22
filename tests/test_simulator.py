@@ -32,28 +32,28 @@ class SimulatorsTest(unittest.TestCase):
                                                       self.rate_functions_1,
                                                       self.t_max_1)
 
-        exp_trajectory_states = np.array([[8, 2, 0],[7, 3, 0],[6, 4, 0],[5, 5, 0],
-                                          [5, 4, 1],[4, 5, 1],[4, 4, 2],[3, 5, 2],
-                                          [2, 6, 2],[1, 7, 2],[0, 8, 2],[0, 7, 3],
-                                          [0, 6, 4],[0, 5, 5],[0, 4, 6],[0, 3, 7],
-                                          [0, 2, 8],[0, 1, 9],[1, 1, 8],[2, 1, 7],
-                                          [1, 2, 7],[1, 1, 8],[1, 0, 9],[2, 0, 8],
-                                          [3, 0, 7],[4, 0, 6],[5, 0, 5],[6, 0, 4],
-                                          [7, 0, 3],[8, 0, 2]])
+        exp_trajectory_states = np.array([[8, 2, 0], [7, 3, 0], [6, 4, 0], [5, 5, 0],
+                                          [5, 4, 1], [4, 5, 1], [4, 4, 2], [3, 5, 2],
+                                          [2, 6, 2], [1, 7, 2], [0, 8, 2], [0, 7, 3],
+                                          [0, 6, 4], [0, 5, 5], [0, 4, 6], [0, 3, 7],
+                                          [0, 2, 8], [0, 1, 9], [1, 1, 8], [2, 1, 7],
+                                          [1, 2, 7], [1, 1, 8], [1, 0, 9], [2, 0, 8],
+                                          [3, 0, 7], [4, 0, 6], [5, 0, 5], [6, 0, 4],
+                                          [7, 0, 3], [8, 0, 2]])
 
-        exp_trajectory_times = np.array([0.0000000000000000, 0.029727347872548521, 0.25772599178629474, 0.97210810584582696, 
-                                         1.0243450293644674, 1.1805293967492805, 1.1940466734565294, 2.0452553699320322, 
+        exp_trajectory_times = np.array([0.0000000000000000, 0.029727347872548521, 0.25772599178629474, 0.97210810584582696,
+                                         1.0243450293644674, 1.1805293967492805, 1.1940466734565294, 2.0452553699320322,
                                          3.0032305029443935, 3.4273953077415853, 4.5801070420244399, 9.2684832351552764,
-                                         11.910485476872877, 12.62172098294765, 14.838326157204031, 26.635707692938666, 
-                                         34.673854035397184, 34.96530800726385, 36.484435668729596, 46.594069486859965, 
-                                         49.158153391653961, 51.057445941028881, 51.470697233147241, 56.044587765423877, 
-                                         64.21588011195071, 88.32653184750373, 92.57139634091304, 94.793650951585562, 
+                                         11.910485476872877, 12.62172098294765, 14.838326157204031, 26.635707692938666,
+                                         34.673854035397184, 34.96530800726385, 36.484435668729596, 46.594069486859965,
+                                         49.158153391653961, 51.057445941028881, 51.470697233147241, 56.044587765423877,
+                                         64.21588011195071, 88.32653184750373, 92.57139634091304, 94.793650951585562,
                                          96.827100817319433, 151.13769733879826])
 
         self.assertEqual(trajectory_states.shape, exp_trajectory_states.shape)
-        self.assertEqual(np.allclose(trajectory_states, exp_trajectory_states), True)
+        self.assertTrue(np.allclose(trajectory_states, exp_trajectory_states))
         self.assertEqual(trajectory_states.shape, exp_trajectory_states.shape)
-        self.assertEqual(np.allclose(trajectory_times, exp_trajectory_times), True)
+        self.assertTrue(np.allclose(trajectory_times, exp_trajectory_times))
 
     def test_next_reaction_method(self):
 
@@ -84,19 +84,21 @@ class SimulatorsTest(unittest.TestCase):
                                          82.76564785, 85.69228982, 91.22928178])
 
         self.assertEqual(trajectory_states.shape, exp_trajectory_states.shape)
-        self.assertEqual(np.allclose(trajectory_states,
-                                     exp_trajectory_states), True)
+        self.assertTrue(np.allclose(trajectory_states, exp_trajectory_states))
 
         self.assertEqual(trajectory_times.shape, exp_trajectory_times.shape)
-        self.assertEqual(np.allclose(trajectory_times,
-                                     exp_trajectory_times), True)
+        self.assertTrue(np.allclose(trajectory_times, exp_trajectory_times))
 
-    # def test_Gillespie_1(self):
-    #     output = boppy.simulators.Gillespie(self.update_matrix_1,
-    #                                         self.initial_conditions_1,
-    #                                         self.rate_vector_1,
-    #                                         self.t_max_1)
-    #     self.assertEqual(np.allclose(output, np.array([4, 5, 6])), True)
+    # def test_fluid_approx(self):
+    #     num_elems_to_test = 10
+    #     expected_last_N_states = np.arange(10)
+    #     output = boppy.simulators.fluid_approx(self.update_matrix_1,
+    #                                            self.initial_conditions_1,
+    #                                            self.rate_vector_1,
+    #                                            self.t_max_1,
+    #                                            {other_parameters} )
+    #     self.assertTrue(np.allclose(output[:-num_elems_to_test], expected_last_N_states))
 
     def tearDown(self):
+        # Reset the numpy seed to a random value.
         np.random.seed()

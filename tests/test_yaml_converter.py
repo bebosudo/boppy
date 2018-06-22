@@ -51,8 +51,8 @@ class YAMLTest(unittest.TestCase):
             with open(temp_filename, "w") as temp_fd:
                 temp_fd.write(self.example_input_text)
 
-            self.assertTrue(self.expected_converted_dictionary ==
-                            boppy.file_parser.filename_to_dict_converter(temp_filename))
+            self.assertEqual(self.expected_converted_dictionary,
+                             boppy.file_parser.filename_to_dict_converter(temp_filename))
 
     def test_empty_filename(self):
         with TemporaryDirectory() as tmpdirname:
@@ -132,12 +132,12 @@ class BoppyCoreComponentsTest(unittest.TestCase):
             reaction_obj = boppy.core.Reaction(self.input_data["Reactions"][i],
                                                self.input_data["Species"])
 
-            self.assertEqual(np.array_equiv(reaction_obj.update_vector,
-                                            self.expected_update_vector[i]), True)
-            self.assertEqual(np.array_equiv(reaction_obj.depends_on_vector,
-                                            self.expected_depends_on_vector[i]), True)
-            self.assertEqual(np.array_equiv(reaction_obj.affects_vector,
-                                            self.expected_affects_vector[i]), True)
+            self.assertTrue(np.array_equiv(reaction_obj.update_vector,
+                                           self.expected_update_vector[i]))
+            self.assertTrue(np.array_equiv(reaction_obj.depends_on_vector,
+                                           self.expected_depends_on_vector[i]))
+            self.assertTrue(np.array_equiv(reaction_obj.affects_vector,
+                                           self.expected_affects_vector[i]))
 
     def test_missing_value_raises_exc(self):
         with self.assertRaisesRegex(BoppyInputError, "Unable to find reagent '.*' inside the list of variables"):
@@ -150,15 +150,14 @@ class BoppyCoreComponentsTest(unittest.TestCase):
         reaction_collection.update_matrix
 
         for reac, upd_vec in zip(reaction_collection, self.expected_update_vector):
-            self.assertEqual(np.array_equiv(reac.update_vector, upd_vec), True)
+            self.assertTrue(np.array_equiv(reac.update_vector, upd_vec))
 
     def test_all_rate_functions(self):
         for i, _ in enumerate(self.input_data["Rate functions"]):
             rate_func = boppy.core.RateFunction(self.input_data["Rate functions"][i],
                                                 self.input_data["Species"],
                                                 self.input_data["Parameters"])
-            self.assertEqual(rate_func.sym_function,
-                             self.expected_rate_functions[i])
+            self.assertEqual(rate_func.sym_function, self.expected_rate_functions[i])
 
     def test_rate_functions_collection_symbolic_arg(self):
         for i, rate_func in enumerate(self.rate_func_coll):
@@ -166,8 +165,8 @@ class BoppyCoreComponentsTest(unittest.TestCase):
                              self.expected_rate_functions[i])
 
     def test_rate_functions_collection_compute_in_points(self):
-        self.assertEqual(True, np.allclose(self.rate_func_coll(self.input_data["Initial conditions"]),
-                                           [-2., 16., -100.]))
+        self.assertTrue(np.allclose(self.rate_func_coll(self.input_data["Initial conditions"]),
+                                    [-2., 16., -100.]))
 
     def test_rate_functions_collection_compute_dim_mismatch_exc(self):
         with self.assertRaisesRegex(BoppyInputError, "Array shapes mismatch: input vector \d, rate functions \d."):
@@ -227,14 +226,14 @@ class BoppyCoreComponentsTest(unittest.TestCase):
                                           np.array([0., -1.,  1.]),
                                           np.array([1.,  0., -1.])]
         for idx, reac in enumerate(controller._reactions):
-            self.assertEqual(True, np.allclose(expected_raw_reactions_upd_vec[idx],
-                                               reac.update_vector))
+            self.assertTrue(np.allclose(expected_raw_reactions_upd_vec[idx],
+                                        reac.update_vector))
 
         self.assertEqual(controller._system_size.value, 100)
         self.assertEqual(controller._t_max, 100)
 
-        self.assertEqual(True, np.allclose(
-            controller._initial_conditions, np.array([80, 20, 0])))
+        self.assertTrue(np.allclose(controller._initial_conditions,
+                                    np.array([80, 20, 0])))
 
         self.assertEqual(controller._selected_alg, boppy.simulators.ssa.SSA)
 
@@ -245,9 +244,10 @@ class BoppyCoreComponentsTest(unittest.TestCase):
 
         self.assertEqual(population.shape[1], len(self.raw_input['Species']))
 
-        self.assertEqual(True, np.allclose(population[-2:],
-                                           np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))
-        self.assertEqual(True, np.allclose(times[-2:], np.array([99.438658085172847, 100.21927360825548])))
+        self.assertTrue(np.allclose(population[-2:],
+                                    np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))
+        self.assertTrue(np.allclose(times[-2:],
+                                    np.array([99.438658085172847, 100.21927360825548])))
 
     def tearDown(self):
         np.random.seed()
