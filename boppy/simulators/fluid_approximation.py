@@ -5,12 +5,7 @@ from scipy.integrate import odeint
 
 def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
     """
-<<<<<<< HEAD
-
-    Secundary arguments. In these rate functions variable system size is represented by N.
-=======
     Secondary arguments. In these rate functions variable system size is represented by N.
->>>>>>> ba3c4e59151811beeb3d52a3031e8cc175c8bd86
     Also needed the costant system size.
     """
 
@@ -33,20 +28,21 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
         Lipschitz continuos and bounded. This function is needed to calculate the limit vector
         field (limit of the drift).
         """
-        N = sym.Symbol('N')
+
         f_functions_vector = []
         for ratefun in rate_functions_vector:
             n = len(variables_involved(ratefun))
             ratefun = ratefun.sym_function.subs(substitutor_dict)
-            ratefun_normalized = ratefun * (N**n)
-            f_N = ratefun_normalized / N
-            f = sym.limit(f_N, N, sym.oo)
+            ratefun_normalized = ratefun * (system_size.symbol**n)
+            f_N = ratefun_normalized / system_size.symbol
+            f = sym.limit(f_N, system_size.symbol, sym.oo)
             f_functions_vector.append(f)
 
         return f_functions_vector
 
     def create_equations(np_matrix, symbolic_functions_vector):
-        """Matrix product between a numerical matrix and a vector of symbolic functions.
+        """
+        Matrix product between a numerical matrix and a vector of symbolic functions.
 
         It creates a list of linear equations.
         """
@@ -64,16 +60,18 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
     f_funcs = scaling(rate_funcs_N, var_to_substitute)
 
     def ode_model(x, t):
-        """Generate the correct input for 'odeint'.
+        """
+        Generate the correct input for 'odeint'.
 
         Odeint is a function that needs a vector of initial conditions and time.
 
         TODO: Check whether a generator could be returned instead of a list.
         """
-        return [equation.evalf(subs=zip(var_to_substitute.values(), x))
+
+        return [equation.evalf(subs=dict(zip(var_to_substitute.values(), x)))
                 for equation in create_equations(update_matrix, f_funcs)]
 
-    d_initial_conditions = [x / system_size for x in initial_conditions]
+    d_initial_conditions = [x / system_size.value for x in initial_conditions]
     t = np.linspace(0, t_max, 1000)
 
     trajectories_states = odeint(ode_model, d_initial_conditions, t)
