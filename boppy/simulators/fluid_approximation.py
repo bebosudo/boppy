@@ -7,9 +7,11 @@ import boppy.core
 
 def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
     """
+
     Secundary arguments. In these rate functions variable system size is represented by N.
     Also needed the costant system size.
     """
+
     rate_funcs_N = kwargs["rate_functions_var_ss"]
     variables = kwargs["variables"]
     system_size = kwargs["system_size"]
@@ -22,13 +24,6 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
         args = list(sym_rate_func.args)
         species_inv = [i for i in args if i.is_Symbol == True]
         return species_inv
-
-    # Dictionary to substitute individuals variables symbols with densities variables symbols.
-    var_to_substitute = {}
-    for var_obj in variables.values():
-        var_to_substitute[var_obj.symbol] = sym.Symbol('d_' + var_obj.str_var)
-
-    d_initial_conditions = [x / system_size for x in initial_conditions]
 
     def scaling(rate_functions_vector, substitutor_dict):
         """
@@ -50,10 +45,6 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
 
         return f_functions_vector
 
-    t = np.linspace(0, t_max, 1000)
-
-    f_funcs = scaling(rate_funcs_N, var_to_substitute)
-
     def create_equations(np_matrix, symbolic_functions_vector):
         """
         This function make a matrix product between a numerical matrix and a vector of functions
@@ -68,6 +59,13 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
 
         return equations_list
 
+    # Dictionary to substitute individuals variables symbols with densities variables symbols.
+    var_to_substitute = {}
+    for var_obj in variables.values():
+        var_to_substitute[var_obj.symbol] = sym.Symbol('d_' + var_obj.str_var)
+
+    f_funcs = scaling(rate_funcs_N, var_to_substitute)
+
     def ode_model(x, t):
         """
         This function operate to generate the correct input for 'odeint', that is a function 
@@ -81,6 +79,9 @@ def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max,
             equation = equation.evalf(subs={foofoo[0]: x[0], foofoo[1]: x[1], foofoo[2]: x[2]})
             egg.append(equation)
         return egg
+
+    d_initial_conditions = [x / system_size for x in initial_conditions]
+    t = np.linspace(0, t_max, 1000)
 
     trajectories_states = odeint(ode_model, d_initial_conditions, t)
     trajectories_times = t
