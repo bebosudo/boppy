@@ -6,9 +6,9 @@ test:
   # - python2 -V
   # - pip2 install -r requirements.txt
   # - python2 ./run_tests
-  - dnf install -y python3-pip libstdc++.so.6
-  - dnf update -y python3-pip
-  - ls -lah /lib64/libstdc++*
+  - dnf install -y python3-pip libstdc++
+  - dnf update -y
+  - ls -lah / /lib{,64} /lib64/libstdc++*
   - python3 -V
   - pip3 install -r requirements.txt
   - python3 ./run_tests
