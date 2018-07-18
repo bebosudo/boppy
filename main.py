@@ -23,11 +23,12 @@ def _is_valid_yaml(parser, filename):
 
 def main():
     parser = argparse.ArgumentParser(description="...")
-    parser.add_argument("-a", "--alg_file", help="algorithm details input yaml", required=True,
-                        type=lambda f: _is_valid_yaml(parser, f))
-    parser.add_argument("-s", "--simul_file", help="simulation details input yaml", required=True,
-                        type=lambda f: _is_valid_yaml(parser, f))
-    # here we want also an optional `--verbosity' parameter
+    parser.add_argument("-a", "--alg_file", help="algorithm details input yaml",
+                        required=True, type=lambda f: _is_valid_yaml(parser, f))
+    parser.add_argument("-s", "--simul_file", help="simulation details input yaml",
+                        required=True, type=lambda f: _is_valid_yaml(parser, f))
+    # TODO: here we want also an optional `--verbosity' parameter that changes the logging level
+
     args = parser.parse_args()
 
     return MainController(args.alg_file, args.simul_file)

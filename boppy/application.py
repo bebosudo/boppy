@@ -1,7 +1,8 @@
 import numbers
 import numpy as np
 
-from .core import VariableCollection, ParameterCollection, Parameter, RateFunctionCollection, ReactionCollection, InputError
+from .core import (VariableCollection, ParameterCollection, Parameter, RateFunctionCollection,
+                   ReactionCollection, InputError)
 from .simulators import ssa, next_reaction_method, fluid_approximation
 
 
@@ -41,25 +42,24 @@ class MainController:
                              "{}.".format(", ".join((repr(alg) for alg in ALGORITHMS_AVAIL))))
 
         self._variables = VariableCollection(self._orig_alg_dict["Species"])
-        # Treat the system size as a parameter, so it's substituted, e.g. in
-        # RateFunction objects.
+
+        # Treat the system size as a parameter, so it's substituted, e.g. in RateFunction objects.
         self._parameters = ParameterCollection(dict(self._orig_alg_dict["Parameters"],
                                                     **self._orig_alg_dict["System size"]))
         self._parameters_wo_system_size = ParameterCollection(self._orig_alg_dict["Parameters"])
 
         self._rate_functions = RateFunctionCollection(self._orig_alg_dict["Rate functions"],
                                                       self._variables, self._parameters)
-        self._rate_functions_variable_system_size = RateFunctionCollection(
-            self._orig_alg_dict["Rate functions"],
-            self._variables,
-            self._parameters_wo_system_size)
+        self._rf_var_system_size = RateFunctionCollection(self._orig_alg_dict["Rate functions"],
+                                                          self._variables,
+                                                          self._parameters_wo_system_size)
+
         self._reactions = ReactionCollection(self._orig_alg_dict["Reactions"], self._variables)
         self.update_matrix = self._reactions.update_matrix
 
         self._system_size = Parameter(*tuple(self._orig_alg_dict["System size"].items())[0])
 
-        # Extract the vector of initial conditions, with some checks on the
-        # species provided.
+        # Extract the vector of initial conditions, with some checks on the species provided.
         self._initial_conditions = np.empty(len(self._orig_alg_dict["Initial conditions"]))
         for species, initial_amount in self._orig_alg_dict["Initial conditions"].items():
             if not self._variables.get(species, False):
@@ -90,7 +90,7 @@ class MainController:
             self._selected_alg = next_reaction_method.next_reaction_method
         elif str_alg.lower() in ("fluid approximation", "fluid limit", "mean field", "ode"):
             self._secondary_args.update(
-                {'rate_functions_var_ss': self._rate_functions_variable_system_size,
+                {'rate_functions_var_ss': self._rf_var_system_size,
                  'variables': self._variables,
                  'system_size': self._system_size.value})
             self._selected_alg = fluid_approximation.fluid_approximation
