@@ -1,6 +1,7 @@
 from . import context
 import unittest
 import boppy.core
+import boppy.application
 from boppy.utils.misc import BoppyInputError
 import boppy.simulators
 import boppy.file_parser
@@ -177,34 +178,34 @@ class BoppyCoreComponentsTest(unittest.TestCase):
                                     "from the number of Rate functions \(\d\)"):
             self.raw_input["Rate functions"] = self.raw_input[
                 "Rate functions"][:-1]
-            boppy.core.MainController(self.raw_input)
+            boppy.application.MainController(self.raw_input)
 
     def test_application_controller_unknown_algorithm(self):
         with self.assertRaisesRegex(BoppyInputError, "The algorithm to use in the simulation must "
                                     "be a string in '.*',?\."):
             self.raw_input["Simulation"] = "asdf"
-            boppy.core.MainController(self.raw_input)
+            boppy.application.MainController(self.raw_input)
 
     def test_application_controller_multiple_algorithms_requested(self):
         with self.assertRaisesRegex(BoppyInputError, "The algorithm to use in the simulation must "
                                     "be a single string\."):
             self.raw_input["Simulation"] = None
-            boppy.core.MainController(self.raw_input)
+            boppy.application.MainController(self.raw_input)
 
     def test_application_controller_multiple_dimension_sizes(self):
         with self.assertRaisesRegex(BoppyInputError, "The size of the system must be a single "
                                     "parameter\. Found: .*\."):
             self.raw_input["System size"] = {"N": 123, "M": 456}
-            boppy.core.MainController(self.raw_input)
+            boppy.application.MainController(self.raw_input)
 
     def test_application_controller_missing_initial_condition(self):
         with self.assertRaisesRegex(BoppyInputError, "The maximum simulation time parameter \(t_max\) "
                                     "must be a number\. Found: .*\."):
             self.raw_input["Maximum simulation time"] = [123, 456]
-            boppy.core.MainController(self.raw_input)
+            boppy.application.MainController(self.raw_input)
 
     def test_application_controller_correct_handling(self):
-        controller = boppy.core.MainController(self.raw_input)
+        controller = boppy.application.MainController(self.raw_input)
         x_s, x_i, x_r, N, k_i, k_s, k_r = sym.symbols(
             "x_s x_i x_r N k_i k_s k_r")
 
@@ -238,7 +239,7 @@ class BoppyCoreComponentsTest(unittest.TestCase):
         self.assertEqual(controller._selected_alg, boppy.simulators.ssa.SSA)
 
     def test_application_controller_simulation(self):
-        controller = boppy.core.MainController(self.raw_input)
+        controller = boppy.application.MainController(self.raw_input)
 
         population, times = controller.simulate()
 
