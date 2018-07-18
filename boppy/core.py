@@ -1,20 +1,14 @@
 import logging
 import numpy as np
 import sympy as sym
-import numbers
 import itertools
 from collections import defaultdict
 
 from .utils import parser, misc
-from .simulators import ssa, next_reaction_method, fluid_approximation
 
 InputError = misc.BoppyInputError
 
 _LOGGER = logging.getLogger(__name__)
-
-ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm", "next reaction method", "gibson bruck",
-                    "gibson-bruck", "fluid approximation", "fluid limit", "mean field",
-                    "ode", "tau-leaping")
 
 
 class Variable:
@@ -163,9 +157,7 @@ class Reaction:
                              "provided {}".format(symbol, self._variables))
 
     def _produce_update_vector(self):
-        """
-        Create the update vector from the dictionary coming from reaction and the list of Variable
-        objects.
+        """Extract vector from the dictionary from reaction and the list of Variable objects.
 
         It searches for a match for each reagent, raising an exception if one of the variables in
         the pyparsing object is not present inside the list of Variable objects.
@@ -241,7 +233,7 @@ class ParameterCollection(CommonProxyMethods):
 class RateFunctionCollection(CommonProxyMethods):
     """Converts and handles RateFunction objects.
 
-    Provides a callable method to compute the
+    Provides the callable magic method to compute each one of the converted functions on a vector.
 
     Input: list of functions (passed as `strings`).
     """
@@ -256,9 +248,8 @@ class RateFunctionCollection(CommonProxyMethods):
             raise InputError("Array shapes mismatch: input vector {}, rate "
                              "functions {}.".format(vector.shape[0], len(self._obj)))
 
-        # CHEL: the elements in the output should always be positive.
-        # CHECK: should the sum of the output be equal/smaller than the system
-        # size?
+        # CHECK: the elements in the output should always be positive.
+        # CHECK: should the sum of the output be equal/smaller than the system size?
         return np.array(tuple(rate_func.function(vector) for rate_func in self))
 
 
@@ -275,114 +266,14 @@ class ReactionCollection(CommonProxyMethods):
 
 
 class DependencyGraph:
-    """Given the vector of variables that change quantity when a reaction is executed and the
-    vector of reactans, create the dependency graph."""
+    """Create the dependency graph from the vector of variables and the vector of reactans.
+
+    The variables in the vector change quantity when a reaction is executed.
+    """
 
     def __init__(self, affects, depends_on):
         self.graph = defaultdict(set)
         for affects_index, affects_reaction in enumerate(affects):
             for depends_on_index, depends_on_reaction in enumerate(depends_on):
-                if len(np.intersect1d(affects_reaction, depends_on_reaction)) != 0:
+                if np.intersect1d(affects_reaction, depends_on_reaction).shape[0] != 0:
                     self.graph[affects_index].add(depends_on_index)
-
-
-class MainController:
-    """Entry point class that handles the input interpretation and the simulation execution."""
-
-    def __init__(self, dict_converted_yaml):
-
-        self._original_yaml = dict_converted_yaml
-
-        if len(self._original_yaml["Parameters"]) != len(self._original_yaml["Rate functions"]):
-            raise InputError("The number of Parameters ({}) is different from the number of Rate"
-                             " functions ({})".format(len(self._original_yaml["Parameters"]),
-                                                      len(self._original_yaml["Rate functions"])))
-        elif len(self._original_yaml["Initial conditions"]) != len(self._original_yaml["Species"]):
-            raise InputError("There must be an initial condition for each species.")
-        elif len(self._original_yaml["System size"]) != 1:
-            raise InputError("The size of the system must be a single parameter. "
-                             "Found: {}.".format(len(self._original_yaml["System size"])))
-        elif not isinstance(self._original_yaml["Maximum simulation time"], numbers.Number):
-            raise InputError("The maximum simulation time parameter (t_max) must be a number. "
-                             "Found: {}.".format(self._original_yaml["Maximum simulation time"]))
-
-        self._alg_chosen = self._original_yaml["Simulation"]
-        if not isinstance(self._alg_chosen, str):
-            raise InputError("The algorithm to use in the simulation must be a single string.")
-        elif self._alg_chosen.lower() not in ALGORITHMS_AVAIL:
-            raise InputError("The algorithm to use in the simulation must be a string in "
-                             "{}.".format(", ".join((repr(alg) for alg in ALGORITHMS_AVAIL))))
-
-        self._variables = VariableCollection(self._original_yaml["Species"])
-        # Treat the system size as a parameter, so it's substituted, e.g. in
-        # RateFunction objects.
-        self._parameters = ParameterCollection(dict(self._original_yaml["Parameters"],
-                                                    **self._original_yaml["System size"]))
-        self._parameters_wo_system_size = ParameterCollection(self._original_yaml["Parameters"])
-
-        self._rate_functions = RateFunctionCollection(self._original_yaml["Rate functions"],
-                                                      self._variables, self._parameters)
-        self._rate_functions_variable_system_size = RateFunctionCollection(
-            self._original_yaml["Rate functions"],
-            self._variables,
-            self._parameters_wo_system_size)
-        self._reactions = ReactionCollection(self._original_yaml["Reactions"], self._variables)
-        self.update_matrix = self._reactions.update_matrix
-
-        self._t_max = self._original_yaml["Maximum simulation time"]
-        self._system_size = Parameter(*tuple(self._original_yaml["System size"].items())[0])
-
-        # Extract the vector of initial conditions, with some checks on the
-        # species provided.
-        self._initial_conditions = np.empty(len(self._original_yaml["Initial conditions"]))
-        for species, initial_amount in self._original_yaml["Initial conditions"].items():
-            if not self._variables.get(species, False):
-                raise InputError("Initial condition '{}: {}' does not match any species "
-                                 "provided.".format(species, initial_amount))
-            self._initial_conditions[self._variables[species].pos] = initial_amount
-
-        self.simulation_out_times = None
-        self.simulation_out_population = None
-        self._associate_alg(self._alg_chosen)
-
-    def _associate_alg(self, str_alg):
-        """Given the algorithm, set the function that matches it and a dict of optional parameters.
-
-        Does not check again whether the algorithm in the string passed is part of the available
-        algorithms, since it should have already been checked in the `__init__`.
-
-        Save into `self._secondary_args` optional arguments that are then passed to the
-        simulator.
-        """
-        self._secondary_args = {}
-
-        if str_alg.lower() in ("ssa", "gillespie"):
-            self._selected_alg = ssa.SSA
-        elif str_alg.lower() in ("nrm", "next reaction method", "gibson bruck", "gibson-bruck"):
-            self._secondary_args.update({'depends_on': self._reactions.depends_on,
-                                         'affects': self._reactions.affects})
-            self._selected_alg = next_reaction_method.next_reaction_method
-        elif str_alg.lower() in ("fluid approximation", "fluid limit", "mean field", "ode"):
-            self._secondary_args.update(
-                {'rate_functions_var_ss': self._rate_functions_variable_system_size,
-                 'variables': self._variables,
-                 'system_size': self._system_size})
-            self._selected_alg = fluid_approximation.fluid_approximation
-
-        else:
-            raise NotImplementedError("The chosen algorithm '{}' has not been "
-                                      "implemented yet.".format(str_alg))
-
-    @property
-    def species(self):
-        return self._variables
-
-    def simulate(self):
-        population, times = self._selected_alg(self.update_matrix,
-                                               self._initial_conditions,
-                                               self._rate_functions,
-                                               self._t_max,
-                                               **self._secondary_args)
-
-        self.simulation_out_population, self.simulation_out_times = population, times
-        return population, times

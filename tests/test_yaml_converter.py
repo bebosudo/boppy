@@ -1,9 +1,10 @@
 from . import context
 import unittest
 import boppy.core
+import boppy.application
 from boppy.utils.misc import BoppyInputError
 import boppy.simulators
-import boppy.file_parser
+import boppy.utils.input_loading as loading_utils
 
 import os.path
 from tempfile import TemporaryDirectory
@@ -38,12 +39,12 @@ class YAMLTest(unittest.TestCase):
 
     def test_interpret_file_from_yaml_to_dict(self):
         self.assertTrue(self.expected_converted_dictionary ==
-                        boppy.file_parser.yaml_string_to_dict_converter(self.example_input_text))
+                        loading_utils.yaml_string_to_dict_converter(self.example_input_text))
 
     def test_interpret_empty_file_from_yaml_to_dict(self):
         empty_input_file = ""
         self.assertIsNone(
-            boppy.file_parser.yaml_string_to_dict_converter(empty_input_file))
+            loading_utils.yaml_string_to_dict_converter(empty_input_file))
 
     def test_filename_to_dict(self):
         with TemporaryDirectory() as tmpdirname:
@@ -52,7 +53,7 @@ class YAMLTest(unittest.TestCase):
                 temp_fd.write(self.example_input_text)
 
             self.assertEqual(self.expected_converted_dictionary,
-                             boppy.file_parser.filename_to_dict_converter(temp_filename))
+                             loading_utils.filename_to_dict_converter(temp_filename))
 
     def test_empty_filename(self):
         with TemporaryDirectory() as tmpdirname:
@@ -60,18 +61,18 @@ class YAMLTest(unittest.TestCase):
             with open(temp_filename, "w") as temp_fd:
                 temp_fd.write("")
             self.assertIsNone(
-                boppy.file_parser.filename_to_dict_converter(temp_filename))
+                loading_utils.filename_to_dict_converter(temp_filename))
 
             with open(temp_filename, "w") as temp_fd:
                 temp_fd.write("\n")
             self.assertIsNone(
-                boppy.file_parser.filename_to_dict_converter(temp_filename))
+                loading_utils.filename_to_dict_converter(temp_filename))
 
     def test_non_existing_filename(self):
         with TemporaryDirectory() as tmpdirname:
             temp_filename = os.path.join(tmpdirname, "test_input.txt")
             with self.assertRaises(FileNotFoundError):
-                boppy.file_parser.filename_to_dict_converter(temp_filename)
+                loading_utils.filename_to_dict_converter(temp_filename)
 
     def tearDown(self):
         # Here we can place repetitive code that should be performed _after_
@@ -83,17 +84,20 @@ class BoppyCoreComponentsTest(unittest.TestCase):
     """Test that the parser is able to correctly convert input to the correct components."""
 
     def setUp(self):
-        self.raw_input = {'Initial conditions': {'x_s': 80, 'x_i': 20, 'x_r': 0},
-                          'Observables': ['tot = x + y'],
-                          'Parameters': {'k_i': 1, 'k_r': 0.05, 'k_s': 0.01},
-                          'Properties': {'x_s': 43},
-                          'Rate functions': ['k_i * x_i * x_s / N', 'k_r * x_i', 'k_s * x_r'],
-                          'Reactions': ['x_s + x_i => x_i + x_i', 'x_i => x_r', 'x_r => x_s'],
-                          'Simulation': 'SSA',
-                          'Maximum simulation time': 100,
-                          'Species': ['x_s', 'x_i', 'x_r'],
-                          'System size': {'N': 100}
-                          }
+        self.raw_alg_input = {'Species': ['x_s', 'x_i', 'x_r'],
+                              'Parameters': {'k_s': 0.01, 'k_i': 1, 'k_r': 0.05},
+                              'Reactions': ['x_s + x_i => x_i + x_i', 'x_i => x_r', 'x_r => x_s'],
+                              'Rate functions': ['k_i * x_i * x_s / N', 'k_r * x_i', 'k_s * x_r'],
+                              'Initial conditions': {'x_s': 80, 'x_i': 20, 'x_r': 0},
+                              'System size': {'N': 100}
+                              }
+
+        self.raw_simul_input = {'Maximum simulation time': 100,
+                                'Simulation': 'SSA',
+                                'Observables': ['tot = x + y'],
+                                'Properties': {'x_s': 43},
+                                'Algorithm iterations': 1000
+                                }
 
         # Data is different from the raw version above.
         self.input_data = {"Species": boppy.core.VariableCollection(["x_s", "x_i", "x_r"]),
@@ -121,8 +125,7 @@ class BoppyCoreComponentsTest(unittest.TestCase):
                                         -6.0 * x_s * x_i / sym.Max(x_i, x_s) + 1.0 * x_i + x_r]
 
         self.rate_func_coll = boppy.core.RateFunctionCollection(self.input_data["Rate functions"],
-                                                                self.input_data[
-                                                                    "Species"],
+                                                                self.input_data["Species"],
                                                                 self.input_data["Parameters"])
 
         np.random.seed(42)
@@ -175,36 +178,35 @@ class BoppyCoreComponentsTest(unittest.TestCase):
     def test_application_controller_shape_rate_func_diff_parameters(self):
         with self.assertRaisesRegex(BoppyInputError, "The number of Parameters \(\d\) is different "
                                     "from the number of Rate functions \(\d\)"):
-            self.raw_input["Rate functions"] = self.raw_input[
-                "Rate functions"][:-1]
-            boppy.core.MainController(self.raw_input)
-
-    def test_application_controller_unknown_algorithm(self):
-        with self.assertRaisesRegex(BoppyInputError, "The algorithm to use in the simulation must "
-                                    "be a string in '.*',?\."):
-            self.raw_input["Simulation"] = "asdf"
-            boppy.core.MainController(self.raw_input)
-
-    def test_application_controller_multiple_algorithms_requested(self):
-        with self.assertRaisesRegex(BoppyInputError, "The algorithm to use in the simulation must "
-                                    "be a single string\."):
-            self.raw_input["Simulation"] = None
-            boppy.core.MainController(self.raw_input)
+            self.raw_alg_input["Rate functions"] = self.raw_alg_input["Rate functions"][:-1]
+            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
 
     def test_application_controller_multiple_dimension_sizes(self):
         with self.assertRaisesRegex(BoppyInputError, "The size of the system must be a single "
                                     "parameter\. Found: .*\."):
-            self.raw_input["System size"] = {"N": 123, "M": 456}
-            boppy.core.MainController(self.raw_input)
+            self.raw_alg_input["System size"] = {"N": 123, "M": 456}
+            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+
+    def test_application_controller_unknown_algorithm(self):
+        with self.assertRaisesRegex(BoppyInputError, "The algorithm to use in the simulation must "
+                                    "be a string in '.*',?\."):
+            self.raw_simul_input["Simulation"] = "asdf"
+            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
 
     def test_application_controller_missing_initial_condition(self):
+        with self.assertRaisesRegex(BoppyInputError, "The algorithm to use in the simulation must "
+                                    "be a single string\."):
+            self.raw_simul_input["Simulation"] = None
+            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+
+    def test_application_controller_multiple_algorithms_requested(self):
         with self.assertRaisesRegex(BoppyInputError, "The maximum simulation time parameter \(t_max\) "
                                     "must be a number\. Found: .*\."):
-            self.raw_input["Maximum simulation time"] = [123, 456]
-            boppy.core.MainController(self.raw_input)
+            self.raw_simul_input["Maximum simulation time"] = [123, 456]
+            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
 
     def test_application_controller_correct_handling(self):
-        controller = boppy.core.MainController(self.raw_input)
+        controller = boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
         x_s, x_i, x_r, N, k_i, k_s, k_r = sym.symbols(
             "x_s x_i x_r N k_i k_s k_r")
 
@@ -238,11 +240,11 @@ class BoppyCoreComponentsTest(unittest.TestCase):
         self.assertEqual(controller._selected_alg, boppy.simulators.ssa.SSA)
 
     def test_application_controller_simulation(self):
-        controller = boppy.core.MainController(self.raw_input)
+        controller = boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
 
         population, times = controller.simulate()
 
-        self.assertEqual(population.shape[1], len(self.raw_input['Species']))
+        self.assertEqual(population.shape[1], len(self.raw_alg_input['Species']))
 
         self.assertTrue(np.allclose(population[-2:],
                                     np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))

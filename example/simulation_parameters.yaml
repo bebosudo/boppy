@@ -1,0 +1,13 @@
+Maximum simulation time: 100
+
+# TODO: handle multiple algorithms at once.
+Simulation: SSA
+
+Observables:
+  - tot = x + y
+
+Properties:
+  x_s: 43
+
+# The number of times the algorithm has to be repeated (useful for stochastic simulations)
+Algorithm iterations: 1000

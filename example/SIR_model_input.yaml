@@ -25,13 +25,3 @@ Initial conditions:
 
 System size:
   N: 100
-
-Maximum simulation time: 100
-
-Simulation: SSA
-
-Observables:
-  - tot = x + y
-
-Properties:
-  x_s: 43
