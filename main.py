@@ -5,30 +5,32 @@ import os.path
 import yaml
 import logging
 
-import boppy.core as core
+from boppy.application import MainController
 from boppy.utils.input_loading import filename_to_dict_converter
 
 LOGGER = logging.getLogger(__name__)
 
 
+def _is_valid_yaml(parser, filename):
+    try:
+        if not os.path.exists(filename):
+            parser.error("cannot access '{}': No such file or directory".format(filename))
+        return filename_to_dict_converter(filename)
+    except yaml.scanner.ScannerError as exc:
+        LOGGER.error("Unable to correctly interpret the input file '%s'; "
+                     "traceback:\n%s\nexiting...", filename, str(exc))
+
+
 def main():
     parser = argparse.ArgumentParser(description="...")
-    parser.add_argument("file", help="input file")
+    parser.add_argument("-a", "--alg_file", help="algorithm details input yaml", required=True,
+                        type=lambda f: _is_valid_yaml(parser, f))
+    parser.add_argument("-s", "--simul_file", help="simulation details input yaml", required=True,
+                        type=lambda f: _is_valid_yaml(parser, f))
     # here we want also an optional `--verbosity' parameter
     args = parser.parse_args()
 
-    if not os.path.exists(args.file):
-        parser.error("The file '%s' does not exist!" % args.file)
-
-    try:
-        yaml_converted_dict = filename_to_dict_converter(args.file)
-        return core.MainController(yaml_converted_dict)
-
-    except yaml.scanner.ScannerError as exc:
-        LOGGER.error("Unable to correctly interpret the input file '%s'; "
-                     "traceback:\n%s\nexiting...", args.file, str(exc))
-
-    raise SystemExit()
+    return MainController(args.alg_file, args.simul_file)
 
 
 if __name__ == "__main__":
