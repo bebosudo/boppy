@@ -6,7 +6,7 @@ import yaml
 import logging
 
 import boppy.core as core
-from boppy.file_parser import filename_to_dict_converter
+from boppy.utils.input_loading import filename_to_dict_converter
 
 LOGGER = logging.getLogger(__name__)
 

@@ -13,53 +13,55 @@ ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm", "next reaction method", "gibson b
 class MainController:
     """Entry point class that handles the input interpretation and the simulation execution."""
 
-    def __init__(self, dict_converted_yaml):
+    def __init__(self, alg_params_dict, simul_params_dict):
 
-        self._original_yaml = dict_converted_yaml
+        self._orig_alg_dict = alg_params_dict
+        self._orig_simul_dict = simul_params_dict
 
-        if len(self._original_yaml["Parameters"]) != len(self._original_yaml["Rate functions"]):
+        if len(self._orig_alg_dict["Parameters"]) != len(self._orig_alg_dict["Rate functions"]):
             raise InputError("The number of Parameters ({}) is different from the number of Rate"
-                             " functions ({})".format(len(self._original_yaml["Parameters"]),
-                                                      len(self._original_yaml["Rate functions"])))
-        elif len(self._original_yaml["Initial conditions"]) != len(self._original_yaml["Species"]):
+                             " functions ({})".format(len(self._orig_alg_dict["Parameters"]),
+                                                      len(self._orig_alg_dict["Rate functions"])))
+        elif len(self._orig_alg_dict["Initial conditions"]) != len(self._orig_alg_dict["Species"]):
             raise InputError("There must be an initial condition for each species.")
-        elif len(self._original_yaml["System size"]) != 1:
+        elif len(self._orig_alg_dict["System size"]) != 1:
             raise InputError("The size of the system must be a single parameter. "
-                             "Found: {}.".format(len(self._original_yaml["System size"])))
-        elif not isinstance(self._original_yaml["Maximum simulation time"], numbers.Number):
-            raise InputError("The maximum simulation time parameter (t_max) must be a number. "
-                             "Found: {}.".format(self._original_yaml["Maximum simulation time"]))
+                             "Found: {}.".format(len(self._orig_alg_dict["System size"])))
 
-        self._alg_chosen = self._original_yaml["Simulation"]
+        self._t_max = self._orig_simul_dict.get("Maximum simulation time", False)
+        if not self._t_max or not isinstance(self._t_max, numbers.Number):
+            raise InputError("The maximum simulation time parameter (t_max) must be a number. "
+                             "Found: {}.".format(self._orig_simul_dict["Maximum simulation time"]))
+
+        self._alg_chosen = self._orig_simul_dict["Simulation"]
         if not isinstance(self._alg_chosen, str):
             raise InputError("The algorithm to use in the simulation must be a single string.")
         elif self._alg_chosen.lower() not in ALGORITHMS_AVAIL:
             raise InputError("The algorithm to use in the simulation must be a string in "
                              "{}.".format(", ".join((repr(alg) for alg in ALGORITHMS_AVAIL))))
 
-        self._variables = VariableCollection(self._original_yaml["Species"])
+        self._variables = VariableCollection(self._orig_alg_dict["Species"])
         # Treat the system size as a parameter, so it's substituted, e.g. in
         # RateFunction objects.
-        self._parameters = ParameterCollection(dict(self._original_yaml["Parameters"],
-                                                    **self._original_yaml["System size"]))
-        self._parameters_wo_system_size = ParameterCollection(self._original_yaml["Parameters"])
+        self._parameters = ParameterCollection(dict(self._orig_alg_dict["Parameters"],
+                                                    **self._orig_alg_dict["System size"]))
+        self._parameters_wo_system_size = ParameterCollection(self._orig_alg_dict["Parameters"])
 
-        self._rate_functions = RateFunctionCollection(self._original_yaml["Rate functions"],
+        self._rate_functions = RateFunctionCollection(self._orig_alg_dict["Rate functions"],
                                                       self._variables, self._parameters)
         self._rate_functions_variable_system_size = RateFunctionCollection(
-            self._original_yaml["Rate functions"],
+            self._orig_alg_dict["Rate functions"],
             self._variables,
             self._parameters_wo_system_size)
-        self._reactions = ReactionCollection(self._original_yaml["Reactions"], self._variables)
+        self._reactions = ReactionCollection(self._orig_alg_dict["Reactions"], self._variables)
         self.update_matrix = self._reactions.update_matrix
 
-        self._t_max = self._original_yaml["Maximum simulation time"]
-        self._system_size = Parameter(*tuple(self._original_yaml["System size"].items())[0])
+        self._system_size = Parameter(*tuple(self._orig_alg_dict["System size"].items())[0])
 
         # Extract the vector of initial conditions, with some checks on the
         # species provided.
-        self._initial_conditions = np.empty(len(self._original_yaml["Initial conditions"]))
-        for species, initial_amount in self._original_yaml["Initial conditions"].items():
+        self._initial_conditions = np.empty(len(self._orig_alg_dict["Initial conditions"]))
+        for species, initial_amount in self._orig_alg_dict["Initial conditions"].items():
             if not self._variables.get(species, False):
                 raise InputError("Initial condition '{}: {}' does not match any species "
                                  "provided.".format(species, initial_amount))

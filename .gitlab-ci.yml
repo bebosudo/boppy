@@ -2,13 +2,12 @@ image: fedora:28
 
 test:
   script:
+  - dnf update -y
   # - dnf install -y python2-pip
   # - python2 -V
   # - pip2 install -r requirements.txt
   # - python2 ./run_tests
   - dnf install -y python3-pip libstdc++
-  - dnf update -y
-  - ls -lah / /lib{,64} /lib64/libstdc++*
   - python3 -V
   - pip3 install -r requirements.txt
   - python3 ./run_tests
