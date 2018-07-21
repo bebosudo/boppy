@@ -1,3 +1,4 @@
+import multiprocessing as mp
 import numbers
 import numpy as np
 
@@ -10,12 +11,18 @@ ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm", "next reaction method", "gibson b
                     "gibson-bruck", "fluid approximation", "fluid limit", "mean field",
                     "ode", "tau-leaping")
 
+global ALG_INPUT
+
+
+def _dummy_function(proc_num=None):
+    func, args, secondary_args = ALG_INPUT
+    return func(*args, **secondary_args)
+
 
 class MainController:
     """Entry point class that handles the input interpretation and the simulation execution."""
 
     def __init__(self, alg_params_dict, simul_params_dict):
-
         self._orig_alg_dict = alg_params_dict
         self._orig_simul_dict = simul_params_dict
 
@@ -29,17 +36,28 @@ class MainController:
             raise InputError("The size of the system must be a single parameter. "
                              "Found: {}.".format(len(self._orig_alg_dict["System size"])))
 
-        self._t_max = self._orig_simul_dict.get("Maximum simulation time", False)
-        if not self._t_max or not isinstance(self._t_max, numbers.Number):
+        self._t_max = self._orig_simul_dict.get("Maximum simulation time")
+        if not isinstance(self._t_max, numbers.Number):
             raise InputError("The maximum simulation time parameter (t_max) must be a number. "
                              "Found: {}.".format(self._orig_simul_dict["Maximum simulation time"]))
 
-        self._alg_chosen = self._orig_simul_dict["Simulation"]
-        if not isinstance(self._alg_chosen, str):
-            raise InputError("The algorithm to use in the simulation must be a single string.")
-        elif self._alg_chosen.lower() not in ALGORITHMS_AVAIL:
+        self._alg_chosen = self._orig_simul_dict.get("Simulation")
+        if (not isinstance(self._alg_chosen, str) or
+                self._alg_chosen.lower() not in ALGORITHMS_AVAIL):
             raise InputError("The algorithm to use in the simulation must be a string in "
                              "{}.".format(", ".join((repr(alg) for alg in ALGORITHMS_AVAIL))))
+
+        iterations_label = "Algorithm iterations"
+        self._iterations = self._orig_simul_dict.get(iterations_label, 1)
+        if not isinstance(self._iterations, int):
+            raise InputError("The '{}' parameter has to be an integer.".format(iterations_label))
+        self._iterations = 1 if self._iterations < 1 else self._iterations
+
+        nproc_label = "Number of processes"
+        self._nproc = self._orig_simul_dict.get(nproc_label, mp.cpu_count())
+        if not isinstance(self._nproc, int):
+            raise InputError("The '{}' parameter has to be an integer.".format(nproc_label))
+        self._nproc = mp.cpu_count() if self._nproc < 1 else self._nproc
 
         self._variables = VariableCollection(self._orig_alg_dict["Species"])
 
@@ -67,21 +85,17 @@ class MainController:
                                  "provided.".format(species, initial_amount))
             self._initial_conditions[self._variables[species].pos] = initial_amount
 
-        self.simulation_out_times = None
-        self.simulation_out_population = None
-        self._associate_alg(self._alg_chosen)
+        self._secondary_args = {}
+        self._setup_alg_and_secondary_param(self._alg_chosen)
 
-    def _associate_alg(self, str_alg):
-        """Given the algorithm, set the function that matches it and a dict of optional parameters.
+    def _setup_alg_and_secondary_param(self, str_alg):
+        """Given the algorithm name, associate a function and extend the secondary parameters.
 
         Does not check again whether the algorithm in the string passed is part of the available
         algorithms, since it should have already been checked in the `__init__`.
 
-        Save into `self._secondary_args` optional arguments that are then passed to the
-        simulator.
+        Save into `self._secondary_args` optional arguments that are then passed to the simulator.
         """
-        self._secondary_args = {}
-
         if str_alg.lower() in ("ssa", "gillespie"):
             self._selected_alg = ssa.SSA
         elif str_alg.lower() in ("nrm", "next reaction method", "gibson bruck", "gibson-bruck"):
@@ -104,11 +118,21 @@ class MainController:
         return self._variables
 
     def simulate(self):
-        population, times = self._selected_alg(self.update_matrix,
-                                               self._initial_conditions,
-                                               self._rate_functions,
-                                               self._t_max,
-                                               **self._secondary_args)
+        # Using a global variable is dirty: the preferred way would be to use a mp.starmap, and
+        # pass it the ALG_INPUT parameters; this doesn't work because inside _rate_functions there
+        # are lambda functions, which cannot be pickled to be transferred to the other processes.
+        # This (should) work safely because ALG_INPUT is only read by processes, but not written.
+        global ALG_INPUT
 
-        self.simulation_out_population, self.simulation_out_times = population, times
-        return population, times
+        ALG_INPUT = (self._selected_alg, (self.update_matrix, self._initial_conditions,
+                                          self._rate_functions, self._t_max),
+                     self._secondary_args)
+
+        with mp.Pool(processes=self._nproc) as pool:
+            populations_and_times = pool.map(_dummy_function, range(self._iterations))
+
+        # The output from the map is a list of pairs of numpy arrays (population, time); they are
+        # the result of stochastic processes and their content is variable; the pairs can have
+        # different lengths, so we cannot pack them into a multidimensional array.
+        populations, times = zip(*populations_and_times)
+        return populations, times

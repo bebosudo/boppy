@@ -23,9 +23,9 @@ def _is_valid_yaml(parser, filename):
 
 def main():
     parser = argparse.ArgumentParser(description="...")
-    parser.add_argument("-a", "--alg_file", help="algorithm details input yaml",
+    parser.add_argument("-a", "--alg_file", help="yaml file with algorithm details",
                         required=True, type=lambda f: _is_valid_yaml(parser, f))
-    parser.add_argument("-s", "--simul_file", help="simulation details input yaml",
+    parser.add_argument("-s", "--simul_file", help="yaml file with simulation details",
                         required=True, type=lambda f: _is_valid_yaml(parser, f))
     # TODO: here we want also an optional `--verbosity' parameter that changes the logging level
 
@@ -36,8 +36,8 @@ def main():
 
 if __name__ == "__main__":
     controller = main()
-    controller.simulate()
+    populations, times = controller.simulate()
 
     from pprint import pprint
-    pprint(controller.simulation_out_population)
-    pprint(controller.simulation_out_times)
+    pprint(populations)
+    pprint(times)

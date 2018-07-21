@@ -1,8 +1,8 @@
+from collections import defaultdict
+import itertools
 import logging
 import numpy as np
 import sympy as sym
-import itertools
-from collections import defaultdict
 
 from .utils import parser, misc
 
@@ -250,7 +250,7 @@ class RateFunctionCollection(CommonProxyMethods):
 
         # CHECK: the elements in the output should always be positive.
         # CHECK: should the sum of the output be equal/smaller than the system size?
-        return np.array(tuple(rate_func.function(vector) for rate_func in self))
+        return np.array(tuple(rate_func(vector) for rate_func in self))
 
 
 class ReactionCollection(CommonProxyMethods):
