@@ -15,3 +15,6 @@ Algorithm iterations: 1000
 # The number of processes to use to consume the requested number of iterations.
 # <= 0 means that will be used an amount of processes equal to the number of cores available.
 Number of processes: -1
+
+# Can be any of: no/yes, true/false
+Use GPU: No

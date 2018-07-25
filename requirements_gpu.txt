@@ -1,0 +1,14 @@
+appdirs==1.4.3
+atomicwrites==1.1.5
+attrs==18.1.0
+decorator==4.3.0
+Mako==1.0.7
+MarkupSafe==1.0
+more-itertools==4.2.0
+numpy==1.15.0
+pluggy==0.6.0
+py==1.5.4
+pycuda==2017.1.1
+pytest==3.6.3
+pytools==2018.5.2
+six==1.11.0
