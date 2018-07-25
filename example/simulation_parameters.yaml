@@ -11,3 +11,7 @@ Properties:
 
 # The number of times the algorithm has to be repeated (useful for stochastic simulations)
 Algorithm iterations: 1000
+
+# The number of processes to use to consume the requested number of iterations.
+# <= 0 means that will be used an amount of processes equal to the number of cores available.
+Number of processes: -1
