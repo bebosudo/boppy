@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 from copy import deepcopy
 import numpy as np
 
@@ -21,7 +19,7 @@ def _initialize_vector_binary_search(vector):
 def _binary_search_processing(vector, random_value):
     """Perform binary search on a vector."""
     i = 0
-    cut_value = (vector.shape[0] + 1) / 2 - 1
+    cut_value = (vector.shape[0] + 1) // 2 - 1
     while i < cut_value:
         if vector[2 * i + 1] >= random_value:
             i = 2 * i + 1
@@ -29,7 +27,7 @@ def _binary_search_processing(vector, random_value):
             random_value -= vector[2 * i + 1]
             i = 2 * i + 2
 
-    return int(i - cut_value)
+    return i - cut_value
 
 
 def SSA(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
@@ -44,7 +42,7 @@ def SSA(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
         rates = function_rate(previous_states)
         total_rate = sum(rates)
 
-        # Generate two random numbers: first to choose reaction, second to choose execution time.
+        # Generate two random numbers: one to select the reaction, the other for the execution time.
         rnd_react = np.random.uniform(0.0001, total_rate)
         rnd_time = np.random.uniform(0.0001, 1)
 
