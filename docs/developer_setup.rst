@@ -4,6 +4,8 @@ Developer setup
 
 First of all, make sure to run the latest Python 3 version available; on linux, search for it in your package manager (``apt search python`` in ubuntu); on windows, visit https://www.python.org; on mac, you usually use `brew <https://brew.sh/>`_ to install packages.
 
+Instructions on how to setup the python environment for gpu execution are available in a `separate file<./developer_setup_gpu.rst>`_.
+
 
 Virtualenv Setup (first time only)
 ==================================

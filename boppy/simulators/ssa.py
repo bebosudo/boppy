@@ -30,7 +30,7 @@ def _binary_search_processing(vector, random_value):
     return i - cut_value
 
 
-def SSA(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
+def SSA(update_matrix, initial_conditions, function_rates, t_max, **kwargs):  # noqa
     """Stochastic Simulation Algorithm."""
     # vector of number of reaction for each times
     data_vector = [deepcopy(initial_conditions)]
@@ -39,7 +39,7 @@ def SSA(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
 
     i = simul_t = 0
     while simul_t < t_max:
-        rates = function_rate(previous_states)
+        rates = function_rates(previous_states)
         total_rate = sum(rates)
 
         # Generate two random numbers: one to select the reaction, the other for the execution time.

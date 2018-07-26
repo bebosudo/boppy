@@ -5,6 +5,7 @@ import numpy as np
 from .core import (VariableCollection, ParameterCollection, Parameter, RateFunctionCollection,
                    ReactionCollection, InputError)
 from .simulators import ssa, next_reaction_method, fluid_approximation
+from .simulators.gpu import ssa_gpu
 
 
 ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm", "next reaction method", "gibson bruck",
@@ -19,7 +20,13 @@ def _dummy_function(proc_num=None):
     return func(*args, **secondary_args)
 
 
-class MainController:
+def boppy_setup(alg_params_dict, simul_params_dict):
+    if simul_params_dict.get("Use GPU", False):
+        return MainControllerGPU(alg_params_dict, simul_params_dict)
+    return MainControllerCPU(alg_params_dict, simul_params_dict)
+
+
+class MainControllerCommon:
     """Entry point class that handles the input interpretation and the simulation execution."""
 
     def __init__(self, alg_params_dict, simul_params_dict):
@@ -61,17 +68,6 @@ class MainController:
 
         self._variables = VariableCollection(self._orig_alg_dict["Species"])
 
-        # Treat the system size as a parameter, so it's substituted, e.g. in RateFunction objects.
-        self._parameters = ParameterCollection(dict(self._orig_alg_dict["Parameters"],
-                                                    **self._orig_alg_dict["System size"]))
-        self._parameters_wo_system_size = ParameterCollection(self._orig_alg_dict["Parameters"])
-
-        self._rate_functions = RateFunctionCollection(self._orig_alg_dict["Rate functions"],
-                                                      self._variables, self._parameters)
-        self._rf_var_system_size = RateFunctionCollection(self._orig_alg_dict["Rate functions"],
-                                                          self._variables,
-                                                          self._parameters_wo_system_size)
-
         self._reactions = ReactionCollection(self._orig_alg_dict["Reactions"], self._variables)
         self.update_matrix = self._reactions.update_matrix
 
@@ -87,6 +83,36 @@ class MainController:
 
         self._secondary_args = {}
         self._setup_alg_and_secondary_param(self._alg_chosen)
+
+    def _setup_alg_and_secondary_param(self, str_alg):
+        # Must be implemented in the child classes.
+        raise NotImplementedError
+
+    def simulate(self):
+        # Must be implemented in the child classes.
+        raise NotImplementedError
+
+    @property
+    def species(self):
+        return self._variables
+
+
+class MainControllerCPU(MainControllerCommon):
+    """Controller for CPU-based processes."""
+
+    def __init__(self, alg_params_dict, simul_params_dict):
+        super(MainControllerCPU, self).__init__(alg_params_dict, simul_params_dict)
+
+        # Treat the system size as a parameter, so it's substituted, e.g. in RateFunction objects.
+        self._parameters = ParameterCollection(dict(self._orig_alg_dict["Parameters"],
+                                                    **self._orig_alg_dict["System size"]))
+        self._parameters_wo_system_size = ParameterCollection(self._orig_alg_dict["Parameters"])
+
+        self._rate_functions = RateFunctionCollection(self._orig_alg_dict["Rate functions"],
+                                                      self._variables, self._parameters)
+        self._rf_var_system_size = RateFunctionCollection(self._orig_alg_dict["Rate functions"],
+                                                          self._variables,
+                                                          self._parameters_wo_system_size)
 
     def _setup_alg_and_secondary_param(self, str_alg):
         """Given the algorithm name, associate a function and extend the secondary parameters.
@@ -113,10 +139,6 @@ class MainController:
             raise NotImplementedError("The chosen algorithm '{}' has not been "
                                       "implemented yet.".format(str_alg))
 
-    @property
-    def species(self):
-        return self._variables
-
     def simulate(self):
         # Using a global variable is dirty: the preferred way would be to use a mp.starmap, and
         # pass it the ALG_INPUT parameters; this doesn't work because inside _rate_functions there
@@ -136,3 +158,39 @@ class MainController:
         # different lengths, so we cannot pack them into a multidimensional array.
         populations, times = zip(*populations_and_times)
         return populations, times
+
+
+class MainControllerGPU(MainControllerCommon):
+    """Controller for GPU-based processes."""
+
+    def __init__(self, alg_params_dict, simul_params_dict):
+        super(MainControllerGPU, self).__init__(alg_params_dict, simul_params_dict)
+
+        self._rate_functions = self._orig_alg_dict["Rate functions"]
+        self._secondary_args["parameters"] = dict(self._orig_alg_dict["Parameters"],
+                                                  **self._orig_alg_dict["System size"])
+        self._secondary_args["iterations"] = self._iterations
+        self._secondary_args["variables"] = self._variables.orig_vars
+
+        self._secondary_args["print_cuda"] = self._orig_simul_dict.get("Print CUDA kernel", False)
+        if not isinstance(self._secondary_args["print_cuda"], bool):
+            raise InputError("The option to print the kernel must be a boolean or no/yes, "
+                             "found '{}'.".format(self._secondary_args["print_cuda"]))
+
+    def _setup_alg_and_secondary_param(self, str_alg):
+        """Given the algorithm name, associate a function and extend the secondary parameters.
+
+        Does not check again whether the algorithm in the string passed is part of the available
+        algorithms, since it should have already been checked in the `__init__`.
+        """
+        # Save into `self._secondary_args` optional arguments that are then passed to the simulator.
+        if str_alg.lower() in ("ssa", "gillespie"):
+            self._selected_alg = ssa_gpu.SSA
+
+        else:
+            raise NotImplementedError("The chosen algorithm '{}' has not been "
+                                      "implemented yet.".format(str_alg))
+
+    def simulate(self):
+        return self._selected_alg(self.update_matrix, self._initial_conditions,
+                                  self._rate_functions, self._t_max, **self._secondary_args)

@@ -3,53 +3,27 @@
 Each thread is assigned one iteration of the algorithm, because each iteration is a distinct
 stochastic process, and therefore can only be horizontally parallelized.
 
+Inside this kernel we use a "binary selection" to randomly pick a value according to its rate.
+
+
 TODO:
 - this kernel should be repeated many times, until the maximum time requested is exhausted, because
   there are no "lists" on cuda/C kernels, so we have to split execution in chunks of defined length
-  in order to use arrays: the following chunk starts from the end of the previous one;
-- create the empty time_and_states matrix directly on the device;
-- use a proper random generator for cuda and initialize its seed;
+  (_num_steps) in order to use arrays: the following chunk starts from the end of the previous one;
+- use a proper random generator and initialize its seed;
+- deal with GPUs with different specs, such as the block and grid thread dimensions, the device
+  memory (adapt the number of repetitions to the amount of memory available)
+  https://documen.tician.de/pycuda/util.html#pycuda.tools.DeviceData
 """
 
-import pycuda.driver as cuda
+from copy import deepcopy
+import numpy as np
 import pycuda.autoinit  # noqa
 from pycuda.compiler import SourceModule
 from pycuda.curandom import rand as curand
-import numpy as np
+import pycuda.gpuarray as gpuarray
 
-
-species = ("x_s", "x_i", "x_r")
-params = {"k_s": "0.01", "k_i": "1.", "k_r": "0.05", "N": "100"}
-function_rates = ("k_i * x_i * x_s / N", "k_r * x_i", "k_s * x_r")
-_parallel_iterations = 3
-_partial_repetitions = 20
-# _chunks = 5
-_num_reacs = len(species)
-start_time, end_time = np.float32(15), np.float32(60)
-
-arr_orig = np.empty((_parallel_iterations, _partial_repetitions, _num_reacs + 1), dtype=np.float32)
-arr_dev = cuda.mem_alloc(arr_orig.size * arr_orig.dtype.itemsize)
-cuda.memcpy_htod(arr_dev, arr_orig)
-
-update_matrix = np.array([[-1.,  1.,  0.],
-                          [0., -1.,  1.],
-                          [1.,  0., -1.]], dtype=np.float32)
-upd_mat_dev = cuda.mem_alloc(update_matrix.size * update_matrix.dtype.itemsize)
-cuda.memcpy_htod(upd_mat_dev, update_matrix)
-
-init_conditions = np.empty((_parallel_iterations, _num_reacs + 1), dtype=np.float32)
-init_conditions[:, 0] = 80
-init_conditions[:, 1] = 20
-init_conditions[:, 2] = 0
-init_cond_dev = cuda.mem_alloc(init_conditions.size * init_conditions.dtype.itemsize)
-cuda.memcpy_htod(init_cond_dev, init_conditions)
-
-# Each thread should produce its own array of random numbers.
-# Note that pycuda.curandom.rand is a toy-random generator, and all the threads share the array produced.
-# https://documen.tician.de/pycuda/array.html?highlight=random#module-pycuda.curandom
-rand_arr_dev = curand((_partial_repetitions, 2, _parallel_iterations))
-
-kernel_str = """
+_kernel_str = """
 __global__ void ssa_simple(float *_update_matrix,
                            float *_init_conditions,
                            const float start_time,
@@ -124,39 +98,59 @@ __global__ void ssa_simple(float *_update_matrix,
 }
 """
 
-function_rates_wo_param = list(function_rates)
-for fr_id, f_rate in enumerate(function_rates_wo_param):
-    for par, val in params.items():
-        f_rate = f_rate.replace(par, val)
-    for sp_id, spec in enumerate(species):
-        f_rate = f_rate.replace(
-            spec, "_time_and_states[th_id * (@num__reacs@ + 1) * @num__rep@ + rep * (@num__reacs@ + 1) + 1 + {}]".format(sp_id))
 
-    function_rates_wo_param[fr_id] = f_rate
+def SSA(update_matrix, initial_conditions, function_rates, t_max, **kwargs):  # noqa
 
-unroll_func_rate = "\n".join((f_rate.join(("_rates_arr[{}] = ".format(fr_id), ";"))
-                              for fr_id, f_rate in enumerate(function_rates_wo_param)))
+    # Fix the maximum number of steps available at each repetition. Should be function of the
+    # amount of memory available on the device and the number of iterations (= threads) requested.
+    _num_steps = 20
+    _num_reacs = len(kwargs["variables"])
+    start_time, end_time = np.float32(0), np.float32(t_max)
 
-kernel_ready = kernel_str\
-    .replace("@unroll__func__rate@", unroll_func_rate)\
-    .replace("@num__iter@", str(_parallel_iterations))\
-    .replace("@num__rep@", str(_partial_repetitions))\
-    .replace("@num__reacs@", str(_num_reacs))
+    function_rates_wo_param = deepcopy(function_rates)
+    for fr_id, f_rate in enumerate(function_rates_wo_param):
+        for par, val in kwargs["parameters"].items():
+            f_rate = f_rate.replace(par, str(val))
+        for sp_id, spec in enumerate(kwargs["variables"]):
+            f_rate = f_rate.replace(spec, "_time_and_states[th_id * (@num__reacs@ + 1) * @num__rep@"
+                                    " + rep * (@num__reacs@ + 1) + 1 + {}]".format(sp_id))
 
-# print("\n".join(" ".join((str(line_no + 2), line))
-#                 for line_no, line in enumerate(kernel_ready.split("\n"))))
+        function_rates_wo_param[fr_id] = f_rate
 
-mod = SourceModule(kernel_ready)
+    unroll_func_rate = "\n".join((f_rate.join(("_rates_arr[{}] = ".format(fr_id), ";"))
+                                  for fr_id, f_rate in enumerate(function_rates_wo_param)))
 
-func = mod.get_function("ssa_simple")
-func(upd_mat_dev, init_cond_dev, start_time, end_time,
-     arr_dev, rand_arr_dev, block=(_parallel_iterations, 1, 1))
+    kernel_ready = _kernel_str \
+        .replace("@unroll__func__rate@", unroll_func_rate) \
+        .replace("@num__iter@", str(kwargs["iterations"])) \
+        .replace("@num__rep@", str(_num_steps)) \
+        .replace("@num__reacs@", str(_num_reacs))
 
-arr_after = np.empty_like(arr_orig)
-cuda.memcpy_dtoh(arr_after, arr_dev)
+    if kwargs.get("print_cuda"):
+        print("\n".join(" ".join((str(line_no + 2), line))
+                        for line_no, line in enumerate(kernel_ready.split("\n"))))
 
-# print("original array:")
-# print(arr_orig)
+    upd_mat_dev = gpuarray.to_gpu(update_matrix.astype(np.float32))
 
-print('after kernel execution (each "group" is computed by a different thread, first column is time):')
-print(arr_after)
+    # The vector of initial conditions has to be repeated for each thread, since in the future,
+    # when we will split in chunks, each chunk will restart from a different initial condition.
+    init_cond_dev = gpuarray.to_gpu(np.tile(initial_conditions.astype(np.float32),
+                                            (kwargs["iterations"], 1)))
+
+    # Each thread should produce its own array of random numbers or at least have access to a
+    # private set of random numbers: we need two numbers for each repetition, one to select the
+    # reaction and one to select the time.
+    # Note that pycuda.curandom.rand is a toy-random generator, and all the threads share the array.
+    # https://documen.tician.de/pycuda/array.html?highlight=random#module-pycuda.curandom
+    rand_arr_dev = curand((_num_steps, 2, kwargs["iterations"]))
+
+    # There seems to be no need to manually copy back to host gpuarrays, see example/demo.py.
+    time_states_dev = gpuarray.GPUArray((kwargs["iterations"], _num_steps, _num_reacs + 1),
+                                        dtype=np.float32)
+
+    mod = SourceModule(kernel_ready)
+    func = mod.get_function("ssa_simple")
+    func(upd_mat_dev, init_cond_dev, start_time, end_time, time_states_dev, rand_arr_dev,
+         block=(kwargs["iterations"], 1, 1))
+
+    return time_states_dev

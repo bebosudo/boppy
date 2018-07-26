@@ -5,7 +5,7 @@ import os.path
 import yaml
 import logging
 
-from boppy.application import MainController
+from boppy.application import boppy_setup
 from boppy.utils.input_loading import filename_to_dict_converter
 
 LOGGER = logging.getLogger(__name__)
@@ -31,13 +31,12 @@ def main():
 
     args = parser.parse_args()
 
-    return MainController(args.alg_file, args.simul_file)
+    return boppy_setup(args.alg_file, args.simul_file)
 
 
 if __name__ == "__main__":
     controller = main()
-    populations, times = controller.simulate()
+    times_and_populations = controller.simulate()
 
     from pprint import pprint
-    pprint(populations)
-    pprint(times)
+    pprint(times_and_populations)

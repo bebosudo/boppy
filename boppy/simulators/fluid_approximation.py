@@ -3,7 +3,7 @@ import sympy as sym
 from scipy.integrate import odeint
 
 
-def fluid_approximation(update_matrix, initial_conditions, function_rate, t_max, **kwargs):
+def fluid_approximation(update_matrix, initial_conditions, function_rates, t_max, **kwargs):
     """
     Secondary arguments. In these rate functions variable system size is represented by N.
     Also needed the costant system size.

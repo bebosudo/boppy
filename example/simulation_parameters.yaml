@@ -17,4 +17,6 @@ Algorithm iterations: 1000
 Number of processes: -1
 
 # Can be any of: no/yes, true/false
-Use GPU: No
+Use GPU: yes
+
+Print CUDA kernel: yes
