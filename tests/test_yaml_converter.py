@@ -190,34 +190,34 @@ class BoppyApplicationTest(unittest.TestCase):
         with self.assertRaisesRegex(BoppyInputError, "The number of Parameters \(\d\) is different "
                                     "from the number of Rate functions \(\d\)"):
             self.raw_alg_input["Rate functions"] = self.raw_alg_input["Rate functions"][:-1]
-            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+            boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
 
     def test_application_controller_multiple_dimension_sizes(self):
         with self.assertRaisesRegex(BoppyInputError, "The size of the system must be a single "
                                     "parameter\. Found: .*\."):
             self.raw_alg_input["System size"] = {"N": 123, "M": 456}
-            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+            boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
 
     def test_application_controller_unknown_algorithm(self):
         with self.assertRaisesRegex(BoppyInputError, "The algorithm to use in the simulation must "
                                                      "be a string in '.*',?\."):
             self.raw_simul_input["Simulation"] = "asdf"
-            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+            boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
 
     def test_application_controller_missing_initial_condition(self):
         with self.assertRaisesRegex(BoppyInputError, "The algorithm to use in the simulation must "
                                                      "be a string in '.*',?\."):
             self.raw_simul_input["Simulation"] = None
-            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+            boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
 
     def test_application_controller_multiple_algorithms_requested(self):
         with self.assertRaisesRegex(BoppyInputError, "The maximum simulation time parameter "
                                                      "\(t_max\) must be a number\. Found: .*\."):
             self.raw_simul_input["Maximum simulation time"] = [123, 456]
-            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+            boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
 
     def test_application_controller_correct_handling(self):
-        controller = boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+        controller = boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
         x_s, x_i, x_r, N, k_i, k_s, k_r = sym.symbols(
             "x_s x_i x_r N k_i k_s k_r")
 
@@ -254,103 +254,97 @@ class BoppyApplicationTest(unittest.TestCase):
         with self.assertRaisesRegex(BoppyInputError, "The 'Algorithm iterations' parameter has "
                                                      "to be an integer."):
             self.raw_simul_input["Algorithm iterations"] = "asdfadfds"
-            boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+            boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
 
     def test_application_controller_simulation(self):
-        controller = boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+        controller = boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
 
-        populations, times = controller.simulate()
+        # Since we compute using multiple processes to split work on cores, we get back a list of
+        # numpy 2D arrays with different shapes. See the simulate method of the CPU controller.
+        times_and_populations = controller.simulate()
 
-        self.assertEqual(self.raw_simul_input['Algorithm iterations'], len(populations))
-        self.assertEqual(self.raw_simul_input['Algorithm iterations'], len(times))
+        self.assertEqual(self.raw_simul_input['Algorithm iterations'],
+                         len(times_and_populations))
 
-        for pop_array in populations:
-            self.assertEqual(pop_array.shape[1], len(self.raw_alg_input['Species']))
+        for arr in times_and_populations:
+            self.assertEqual(arr.shape[1], 1 + len(self.raw_alg_input['Species']))
 
-        self.assertTrue(np.allclose(populations[0][-2:],
-                                    np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))
-        self.assertTrue(np.allclose(times[0][-2:],
-                                    np.array([99.438658085172847, 100.21927360825548])))
-        self.assertTrue(np.allclose(populations[3][-2:],
-                                    np.array([3, 13, 84, 3, 12, 85]).reshape(2, 3)))
-        self.assertTrue(np.allclose(times[3][-2:],
-                                    np.array([99.14632023, 100.3107783])))
+        self.assertTrue(np.allclose(times_and_populations[0][-2:],
+                                    np.array([99.438658085172847, 13, 10, 77,
+                                              100.21927360825548, 14, 10, 76]).reshape(2, 4)))
+        self.assertTrue(np.allclose(times_and_populations[3][-2:],
+                                    np.array([99.14632023, 3, 13, 84,
+                                              100.3107783, 3, 12, 85]).reshape(2, 4)))
 
     def test_application_missing_iterations_param(self):
         del self.raw_simul_input["Algorithm iterations"]
-        controller = boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+        controller = boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
 
-        populations, times = controller.simulate()
+        times_and_populations = controller.simulate()
 
         self.assertEqual(controller._iterations, 1)
-        self.assertTrue(np.allclose(populations[0][-2:],
-                                    np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))
-        self.assertTrue(np.allclose(times[0][-2:],
-                                    np.array([99.438658085172847, 100.21927360825548])))
+        self.assertTrue(np.allclose(times_and_populations[0][-2:],
+                                    np.array([99.438658085172847, 13, 10, 77,
+                                              100.21927360825548, 14, 10, 76]).reshape(2, 4)))
 
     def test_application_controller_simulation_1_iteration(self):
         self.raw_simul_input['Algorithm iterations'] = 1
-        controller = boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
+        controller = boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
 
-        populations, times = controller.simulate()
+        times_and_populations = controller.simulate()
 
-        self.assertEqual(self.raw_simul_input['Algorithm iterations'], len(populations))
-        self.assertEqual(self.raw_simul_input['Algorithm iterations'], len(times))
+        self.assertEqual(self.raw_simul_input['Algorithm iterations'],
+                         len(times_and_populations))
 
-        for pop_array in populations:
-            self.assertEqual(pop_array.shape[1], len(self.raw_alg_input['Species']))
+        for arr in times_and_populations:
+            self.assertEqual(arr.shape[1], 1 + len(self.raw_alg_input['Species']))
 
-        self.assertTrue(np.allclose(populations[0][-2:],
-                                    np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))
-        self.assertTrue(np.allclose(times[0][-2:],
-                                    np.array([99.438658085172847, 100.21927360825548])))
+        self.assertTrue(np.allclose(times_and_populations[0][-2:],
+                                    np.array([99.438658085172847, 13, 10, 77,
+                                              100.21927360825548, 14, 10, 76]).reshape(2, 4)))
 
     def test_application_controller_simulation_1_process(self):
         self.raw_simul_input['Algorithm iterations'] = 1  # To speed up tests.
         self.raw_simul_input['Number of processes'] = 1
-        controller = boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
-        populations, times = controller.simulate()
+        controller = boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
+        times_and_populations = controller.simulate()
 
-        self.assertTrue(np.allclose(populations[0][-2:],
-                                    np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))
-        self.assertTrue(np.allclose(times[0][-2:],
-                                    np.array([99.438658085172847, 100.21927360825548])))
+        self.assertTrue(np.allclose(times_and_populations[0][-2:],
+                                    np.array([99.438658085172847, 13, 10, 77,
+                                              100.21927360825548, 14, 10, 76]).reshape(2, 4)))
 
     def test_application_controller_simulation_missing_num_processes(self):
         self.raw_simul_input['Algorithm iterations'] = 1
         del self.raw_simul_input['Number of processes']
-        controller = boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
-        populations, times = controller.simulate()
+        controller = boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
+        times_and_populations = controller.simulate()
 
         self.assertEqual(controller._nproc, self.num_procs)
-        self.assertTrue(np.allclose(populations[0][-2:],
-                                    np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))
-        self.assertTrue(np.allclose(times[0][-2:],
-                                    np.array([99.438658085172847, 100.21927360825548])))
+        self.assertTrue(np.allclose(times_and_populations[0][-2:],
+                                    np.array([99.438658085172847, 13, 10, 77,
+                                              100.21927360825548, 14, 10, 76]).reshape(2, 4)))
 
     def test_application_controller_simulation_zero_num_processes(self):
         self.raw_simul_input['Algorithm iterations'] = 1
         self.raw_simul_input['Number of processes'] = 0
-        controller = boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
-        populations, times = controller.simulate()
+        controller = boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
+        times_and_populations = controller.simulate()
 
         self.assertEqual(controller._nproc, self.num_procs)
-        self.assertTrue(np.allclose(populations[0][-2:],
-                                    np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))
-        self.assertTrue(np.allclose(times[0][-2:],
-                                    np.array([99.438658085172847, 100.21927360825548])))
+        self.assertTrue(np.allclose(times_and_populations[0][-2:],
+                                    np.array([99.438658085172847, 13, 10, 77,
+                                              100.21927360825548, 14, 10, 76]).reshape(2, 4)))
 
     def test_application_controller_simulation_negative_num_processes(self):
         self.raw_simul_input['Algorithm iterations'] = 1
         self.raw_simul_input['Number of processes'] = -10
-        controller = boppy.application.MainController(self.raw_alg_input, self.raw_simul_input)
-        populations, times = controller.simulate()
+        controller = boppy.application.MainControllerCPU(self.raw_alg_input, self.raw_simul_input)
+        times_and_populations = controller.simulate()
 
         self.assertEqual(controller._nproc, self.num_procs)
-        self.assertTrue(np.allclose(populations[0][-2:],
-                                    np.array([13, 10, 77, 14, 10, 76]).reshape(2, 3)))
-        self.assertTrue(np.allclose(times[0][-2:],
-                                    np.array([99.438658085172847, 100.21927360825548])))
+        self.assertTrue(np.allclose(times_and_populations[0][-2:],
+                                    np.array([99.438658085172847, 13, 10, 77,
+                                              100.21927360825548, 14, 10, 76]).reshape(2, 4)))
 
     def tearDown(self):
         np.random.seed()

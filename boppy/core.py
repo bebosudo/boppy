@@ -215,8 +215,13 @@ class VariableCollection(CommonProxyMethods):
     """
 
     def __init__(self, list_variables):
+        self._orig_vars = list_variables
         self._obj = {var: Variable(var, idx)
                      for idx, var in enumerate(list_variables)}
+
+    @property
+    def orig_vars(self):
+        return self._orig_vars
 
 
 class ParameterCollection(CommonProxyMethods):

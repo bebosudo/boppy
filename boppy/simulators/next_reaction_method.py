@@ -72,7 +72,8 @@ def next_reaction_method(update_matrix, initial_mol_number, propensity_function,
         # Update the propensity functions
         propensity_val = np.copy(propensity_val_new)
 
-    return np.array(trajectory_states), np.array(trajectory_ftimes)
+    # Pack together the time column with the states associated to it.
+    return np.c_[trajectory_ftimes, trajectory_states]
 
 
 IPQnode = namedtuple('Node', ['index', 'time'])  # Node of the Indexed Priority Queue
@@ -81,7 +82,7 @@ IPQnode = namedtuple('Node', ['index', 'time'])  # Node of the Indexed Priority 
 class IndexedPriorityQueue:
     """
     An indexed priority queue consists of a tree structure of ordered IPQnode (pairs of reaction's index and putative time)
-    and a dictionary where the i-th key is mapped to the position in the tree that contains the IPQnode whose index is i. 
+    and a dictionary where the i-th key is mapped to the position in the tree that contains the IPQnode whose index is i.
     The tree structure has the property that each parent has a lower putative time than either of its children (heap).
     """
 
