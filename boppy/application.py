@@ -153,11 +153,10 @@ class MainControllerCPU(MainControllerCommon):
         with mp.Pool(processes=self._nproc) as pool:
             populations_and_times = pool.map(_dummy_function, range(self._iterations))
 
-        # The output from the map is a list of pairs of numpy arrays (population, time); they are
-        # the result of stochastic processes and their content is variable; the pairs can have
-        # different lengths, so we cannot pack them into a multidimensional array.
-        populations, times = zip(*populations_and_times)
-        return populations, times
+        # The output from the map is a list of numpy 2D arrays; they are the result of stochastic
+        # processes and their content is variable; the pairs can have different lengths, so we
+        # cannot pack them into a multidimensional array.
+        return populations_and_times
 
 
 class MainControllerGPU(MainControllerCommon):
@@ -174,7 +173,7 @@ class MainControllerGPU(MainControllerCommon):
 
         self._secondary_args["print_cuda"] = self._orig_simul_dict.get("Print CUDA kernel", False)
         if not isinstance(self._secondary_args["print_cuda"], bool):
-            raise InputError("The option to print the kernel must be a boolean or no/yes, "
+            raise InputError("The option to print the kernel must be true/false or no/yes; "
                              "found '{}'.".format(self._secondary_args["print_cuda"]))
 
     def _setup_alg_and_secondary_param(self, str_alg):

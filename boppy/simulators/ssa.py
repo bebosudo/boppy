@@ -60,4 +60,5 @@ def SSA(update_matrix, initial_conditions, function_rates, t_max, **kwargs):  # 
 
         i += 1
 
-    return np.array(data_vector), np.array(time_vector)
+    # Pack together the time column with the states associated to it.
+    return np.c_[time_vector, data_vector]
