@@ -5,7 +5,6 @@ import numpy as np
 from .core import (VariableCollection, ParameterCollection, Parameter, RateFunctionCollection,
                    ReactionCollection, InputError)
 from .simulators import ssa, next_reaction_method, fluid_approximation
-from .simulators.gpu import ssa_gpu
 
 
 ALGORITHMS_AVAIL = ("ssa", "gillespie", "nrm", "next reaction method", "gibson bruck",
@@ -163,6 +162,9 @@ class MainControllerGPU(MainControllerCommon):
     """Controller for GPU-based processes."""
 
     def __init__(self, alg_params_dict, simul_params_dict):
+        # Placed here so that it doesn't break tests performed without pycuda installed.
+        from .simulators.gpu import ssa_gpu  # noqa
+
         super(MainControllerGPU, self).__init__(alg_params_dict, simul_params_dict)
 
         self._rate_functions = self._orig_alg_dict["Rate functions"]
